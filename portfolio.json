@@ -1,0 +1,441 @@
+{
+  "client": {
+    "name": "Kabeer Singh Thockchom",
+    "age": 24,
+    "occupation": "Consultant at Ernst & Young",
+    "marital_status": "Single",
+    "dependents": 0,
+    "location": "San Francisco, California",
+    "risk_tolerance": "Moderate",
+    "investment_experience": "Intermediate"
+  },
+  "investment_accounts": {
+    "401k": {
+      "account_type": "Tax-Deferred",
+      "institution": "Fidelity Investments",
+      "plan_name": "Ernst & Young Retirement Savings Plan",
+      "total_value": 23872.09,
+      "holdings": [
+        {
+          "ticker": "N/A",
+          "name": "Vanguard Target 2065",
+          "shares": 703.71,
+          "cost_basis": 24.38,
+          "current_value": 17156.35,
+          "asset_class": "Target Date Fund"
+        },
+        {
+          "ticker": "N/A",
+          "name": "SP 500 Index Plan Class E",
+          "shares": 5.96,
+          "cost_basis": 326.41,
+          "current_value": 1945.26,
+          "asset_class": "US Equity"
+        },
+        {
+          "ticker": "N/A",
+          "name": "VG IS TL INTL STK MK",
+          "shares": 5.64,
+          "cost_basis": 173.21,
+          "current_value": 975.81,
+          "asset_class": "International Equity"
+        },
+        {
+          "ticker": "FBCGX",
+          "name": "Fidelity Blue Chip Growth K6 Fund",
+          "shares": 45.75,
+          "cost_basis": 42.65,
+          "current_value": 2058.07,
+          "asset_class": "US Equity"
+        },
+        {
+          "ticker": "N/A",
+          "name": "PIMCO Total Return A",
+          "shares": 55.73,
+          "cost_basis": 15.91,
+          "current_value": 886.69,
+          "asset_class": "Bonds"
+        }
+      ]
+    },
+    "traditional_ira": {
+      "account_type": "Tax-Deferred",
+      "total_value": 0,
+      "holdings": []
+    },
+    "roth_ira": {
+      "account_type": "Tax-Free",
+      "total_value": 0,
+      "holdings": []
+    },
+    "taxable_brokerage": {
+      "account_type": "Taxable",
+      "institution": "Robinhood",
+      "total_value": 6531.0,
+      "holdings": [
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "shares": 20.74,
+          "cost_basis": 121.85,
+          "current_value": 3007.3,
+          "asset_class": "US Equity"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "shares": 2.0,
+          "cost_basis": 165.86,
+          "current_value": 772.7,
+          "asset_class": "US Equity"
+        },
+        {
+          "ticker": "UNH",
+          "name": "UnitedHealth Group",
+          "shares": 2.02,
+          "cost_basis": 329.85,
+          "current_value": 716.28,
+          "asset_class": "US Equity"
+        },
+        {
+          "ticker": "MRVL",
+          "name": "Marvell Technology Group",
+          "shares": 4,
+          "cost_basis": 104.5,
+          "current_value": 360.6,
+          "asset_class": "US Equity"
+        },
+        {
+          "ticker": "VOO",
+          "name": "Vanguard S&P 500 ETF",
+          "shares": 0.99,
+          "cost_basis": 608.58,
+          "current_value": 623.02,
+          "asset_class": "US Equity"
+        },
+        {
+          "ticker": "FSRNX",
+          "name": "Fidelity Real Estate Index Fund",
+          "shares": 52,
+          "cost_basis": 16.74,
+          "current_value": 845.0,
+          "asset_class": "Real Estate"
+        },
+        {
+          "ticker": "OXY",
+          "name": "Occidental Petroleum",
+          "shares": 5.07,
+          "cost_basis": 49.29,
+          "current_value": 205.83,
+          "asset_class": "US Equity"
+        },
+        {
+          "ticker": "BTC-USD",
+          "name": "Bitcoin",
+          "shares": 2.06e-06,
+          "cost_basis": 100738,
+          "current_value": 0.23,
+          "asset_class": "Crypto"
+        },
+        {
+          "ticker": "PEPE",
+          "name": "PEPE Token",
+          "shares": 6366,
+          "cost_basis": 2.18e-05,
+          "current_value": 0.04,
+          "asset_class": "Crypto"
+        }
+      ]
+    },
+    "hsa": {
+      "account_type": "Tax-Advantaged",
+      "total_value": 0,
+      "holdings": []
+    },
+    "529_college_savings": {
+      "account_type": "Tax-Advantaged",
+      "total_value": 0,
+      "beneficiary": "N/A",
+      "holdings": []
+    }
+  },
+  "other_assets": {
+    "primary_residence": {
+      "value": 0,
+      "purchase_price": 0,
+      "purchase_date": null,
+      "status": "Renter"
+    },
+    "emergency_fund": {
+      "checking": 11573.76,
+      "savings": 6315.12,
+      "notes": "SoFi Checking: $4,223.45, Emergency Fund (SoFi): $6,366.29, Chase Checking: $958.13, Apple Cash: $25.73, SoFi Savings: $6,315.04, AmEx HYSA: $0.08"
+    },
+    "vehicles": []
+  },
+  "liabilities": {
+    "mortgage": {
+      "original_amount": 0,
+      "current_balance": 0,
+      "interest_rate": 0,
+      "monthly_payment": 0,
+      "years_remaining": 0,
+      "type": "N/A - Renter"
+    },
+    "car_loan": {
+      "original_amount": 0,
+      "current_balance": 0,
+      "interest_rate": 0,
+      "monthly_payment": 0,
+      "months_remaining": 0
+    },
+    "student_loans": {
+      "original_amount": 0,
+      "current_balance": 0,
+      "interest_rate": 0,
+      "monthly_payment": 0,
+      "months_remaining": 0
+    },
+    "credit_cards": {
+      "apple_card": {
+        "current_balance": 695.9,
+        "limit": 8500
+      },
+      "chase_credit_card": {
+        "current_balance": 78.89,
+        "limit": 8000
+      },
+      "amex_corporate": {
+        "current_balance": 152.85,
+        "limit": 10000
+      },
+      "amex_gold": {
+        "current_balance": 1009.16,
+        "limit": 0
+      },
+      "amex_cash_magnet": {
+        "current_balance": 0,
+        "limit": 8000
+      },
+      "total_balance": 1936.8,
+      "note": "Appears to be current monthly spending, not revolving debt"
+    },
+    "rent": {
+      "monthly_payment": 2350,
+      "note": "Manual entry, not included in net worth calculation"
+    }
+  },
+  "monthly_cash_flow": {
+    "income": {
+      "salary_gross": 10833.33,
+      "salary_net_per_paycheck": 3112.1,
+      "salary_net_monthly_estimate": 6224.2,
+      "spouse_salary_gross": 0,
+      "rsu_vesting_monthly": 0,
+      "side_hustle": 0,
+      "rental_income": 0,
+      "notes": "Based on $130,000 annual gross salary"
+    },
+    "taxes_and_deductions": {
+      "federal_tax_annual": 20579.5,
+      "federal_tax_monthly": 1714.96,
+      "state_tax_annual": 8117.14,
+      "state_tax_monthly": 676.43,
+      "social_security_annual": 8060.0,
+      "social_security_monthly": 671.67,
+      "medicare_annual": 1885.0,
+      "medicare_monthly": 157.08,
+      "401k_contribution_estimate": 0,
+      "hsa_contribution": 0,
+      "health_insurance": 0,
+      "total_annual_tax": 38641.64,
+      "effective_tax_rate": 29.72,
+      "notes": "Based on 2025 CA tax calculations for single filer"
+    },
+    "expenses": {
+      "housing": {
+        "rent": 2350,
+        "renters_insurance": 0,
+        "utilities": 0,
+        "internet_phone": 0,
+        "notes": "Household budget category: $2,500/month"
+      },
+      "transportation": {
+        "car_loan": 0,
+        "car_insurance": 0,
+        "gas": 0,
+        "parking": 0,
+        "maintenance": 0,
+        "budget": 200,
+        "notes": "Auto & transport budget: $200/month"
+      },
+      "food": {
+        "groceries": 400,
+        "dining_out": 1000,
+        "notes": "Groceries budget: $400, Drinks & dining budget: $1,000"
+      },
+      "children": {
+        "daycare": 0,
+        "activities": 0,
+        "clothing": 0,
+        "education": 0
+      },
+      "personal": {
+        "gym_memberships": 0,
+        "subscriptions": 0,
+        "clothing": 0,
+        "personal_care": 0,
+        "entertainment": 0,
+        "vacation_fund": 0
+      },
+      "debt_payments": {
+        "student_loans": 0
+      },
+      "other": {
+        "financial": 750,
+        "life_insurance": 0,
+        "gifts_charity": 0,
+        "miscellaneous": 0,
+        "notes": "Financial category budget: $750/month"
+      },
+      "total_budgeted_monthly": 5000,
+      "actual_average_monthly_last_7_months": 6424.3
+    },
+    "monthly_savings": {
+      "budgeted": 2200,
+      "actual_average_last_7_months": 516.56
+    }
+  },
+  "financial_goals": {
+    "retirement": {
+      "target_age": 67,
+      "years_until_goal": 43,
+      "desired_annual_income": 48000,
+      "desired_monthly_income": 4000,
+      "estimated_social_security": 0,
+      "current_savings_total": 30854.92,
+      "priority": "High",
+      "notes": "Based on forecasting scenario with $4k/month retirement expenses"
+    },
+    "college_fund": {
+      "target_amount": 0,
+      "target_year": 0,
+      "years_until_goal": 0,
+      "current_savings": 0,
+      "priority": "N/A - No dependents"
+    },
+    "home_purchase": {
+      "target_amount": 0,
+      "target_year": 0,
+      "years_until_goal": 0,
+      "current_savings": 0,
+      "purpose": "Not currently planning",
+      "priority": "Not Set"
+    },
+    "financial_independence": {
+      "target_age": 67,
+      "years_until_goal": 43,
+      "target_net_worth": 0,
+      "priority": "High",
+      "life_expectancy_target": 90
+    }
+  },
+  "insurance_coverage": {
+    "life_insurance": {
+      "coverage": 0,
+      "type": "None",
+      "annual_premium": 0,
+      "notes": "Single, no dependents - may not be priority"
+    },
+    "disability_insurance": {
+      "coverage": "Unknown",
+      "monthly_benefit": 0,
+      "waiting_period": 0,
+      "notes": "May be provided through Ernst & Young"
+    },
+    "health_insurance": {
+      "provider": "Unknown",
+      "notes": "Likely through Ernst & Young employer coverage"
+    },
+    "umbrella_policy": {
+      "coverage": 0,
+      "annual_premium": 0
+    }
+  },
+  "tax_situation": {
+    "filing_status": "Single",
+    "estimated_agi": 130000,
+    "marginal_tax_bracket_federal": 0.24,
+    "marginal_tax_bracket_state": 0.093,
+    "effective_tax_rate_total": 0.2972,
+    "itemizes_deductions": false,
+    "standard_deduction_federal": 15000,
+    "standard_deduction_state": 5540,
+    "mortgage_interest_deduction": 0,
+    "property_tax_deduction": 0,
+    "charitable_contributions": 0
+  },
+  "portfolio_analysis": {
+    "total_investment_portfolio": 30403.09,
+    "asset_allocation": {
+      "us_stock_percentage": 31.46,
+      "international_stock_percentage": 0.35,
+      "bonds_percentage": 0.06,
+      "cash_percentage": 0.04,
+      "other_percentage": 12.53,
+      "real_estate_percentage": 2.74
+    },
+    "concentration_risks": {
+      "single_stock_nvda": "NVDA represents 13.9% of total investment portfolio - high concentration",
+      "tech_sector": "Heavy tech concentration in Robinhood account",
+      "target_date_fund": "56% in Vanguard Target 2065 - appropriate for age"
+    },
+    "performance_notes": {
+      "strong_performers": [
+        "NVDA +78%",
+        "AVGO +133%"
+      ],
+      "underperformers": [
+        "MRVL -13.7%",
+        "OXY -17.7%",
+        "FSRNX -2.9%"
+      ]
+    }
+  },
+  "risk_factors": {
+    "job_stability": "High - Big 4 consulting firm",
+    "emergency_fund_months": 2.79,
+    "emergency_fund_status": "Below 3-6 month recommended minimum",
+    "concentration_risk": "High - 61% of investment portfolio in individual tech stocks (NVDA, AVGO, UNH, MRVL, OXY)",
+    "geographic_concentration": "High - HCOL area (San Francisco), young professional",
+    "insurance_gaps": "Life insurance not needed with no dependents; disability coverage status unknown",
+    "budget_variance": "Actual spending averaging $1,424 over budget monthly"
+  },
+  "behavioral_notes": {
+    "investment_behavior": "Strong tech stock focus, showing growth orientation consistent with age. Small crypto exposure ($0.27 total) suggests experimental approach.",
+    "spending_patterns": "Dining out significant ($1,338 in Oct vs $1,000 budget). Financial category spending ($682) likely includes investment-related costs.",
+    "financial_knowledge": "Good - actively managing multiple investment accounts, using tax-deferred 401k appropriately",
+    "positive_behaviors": [
+      "Contributing to 401k",
+      "Maintaining emergency fund",
+      "Diversified account types"
+    ],
+    "areas_for_improvement": [
+      "Budget adherence",
+      "Emergency fund below target",
+      "High individual stock concentration"
+    ]
+  },
+  "net_worth_summary": {
+    "total_net_worth": 46355.17,
+    "total_assets": 48291.97,
+    "total_liabilities": 1936.8,
+    "breakdown": {
+      "investment_accounts": 30403.09,
+      "cash_and_bank": 17888.88,
+      "real_estate": 0,
+      "vehicles": 0,
+      "other_assets": 0
+    }
+  }
+}

@@ -1,0 +1,22 @@
+langgraph
+langchain
+langchain-openai
+langchain-anthropic
+langchain-core
+deepagents
+numpy
+pandas
+scipy
+python-dotenv
+pydantic
+plotly
+gradio
+certifi
+tavily-python
+
+# Testing
+pytest
+pytest-asyncio
+
+# Optional: Redis for production caching (if not using in-memory cache)
+# redis>=5.0.0
