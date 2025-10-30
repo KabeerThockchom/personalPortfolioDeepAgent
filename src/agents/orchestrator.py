@@ -9,7 +9,7 @@ def orchestrator_node(state, config):
     """
     Orchestrator agent that analyzes the user query and decides which specialized agent(s) to route to.
     """
-    llm = ChatAnthropic(model="claude-4.5 Haiku-4-5", temperature=0)
+    llm = ChatAnthropic(model="claude-haiku-4-5", temperature=0)
 
     last_message = state["messages"][-1].content
     agents_consulted = state.get("agents_consulted", [])
@@ -65,7 +65,7 @@ def synthesizer_node(state, config):
     """
     Synthesizer node that aggregates insights from consulted agents and provides final response.
     """
-    llm = ChatAnthropic(model="claude-4.5 Haiku-4-5", temperature=0)
+    llm = ChatAnthropic(model="claude-haiku-4-5", temperature=0)
 
     user_question = state["messages"][0].content  # Original question
     agents_consulted = state.get("agents_consulted", [])

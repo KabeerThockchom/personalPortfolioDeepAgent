@@ -62,7 +62,7 @@ def risk_agent_node(state, config):
     """Risk assessment agent node for the graph."""
     from langchain_anthropic import ChatAnthropic
 
-    llm = ChatAnthropic(model="claude-4.5 Haiku-4-5", temperature=0)
+    llm = ChatAnthropic(model="claude-haiku-4-5", temperature=0)
     agent = create_risk_agent(llm)
 
     portfolio = state.get("client_portfolio", {})

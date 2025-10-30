@@ -68,6 +68,35 @@ You: What's the latest news on NVDA?
     [Returns recent NVIDIA news from Bloomberg, WSJ, Reuters]
 ```
 
+### 4. (Optional) Run the Web Interface 🌐
+
+For a beautiful web UI with real-time tool visualization and subagent tracking:
+
+**Start Backend API:**
+```bash
+# From project root (personal_finance_deep_agent)
+uvicorn api.server:app --reload --port 8000
+```
+
+**Start Frontend (in new terminal):**
+```bash
+cd ../personal-finance-frontend
+npm install
+npm run dev
+```
+
+Visit **http://localhost:5173** for the web interface!
+
+**Web UI Features:**
+- 💬 Real-time chat with streaming responses
+- 🔧 Tool call visualization with animated cards
+- 🤖 Live subagent activity tracking
+- 📊 Portfolio dashboard
+- ✅ Task progress monitoring
+- 📁 File explorer for agent-created files
+
+See `api/README.md` and `../personal-finance-frontend/README.md` for detailed documentation.
+
 ---
 
 ## 🏗️ Architecture
