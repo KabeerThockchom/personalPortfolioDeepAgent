@@ -6,6 +6,79 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Personal Finance Deep Agent - A multi-agent financial analysis system using DeepAgents framework with LangGraph orchestration. Features 8 specialized subagents, 74+ financial tools, real-time Yahoo Finance API integration, web search via Tavily, and portfolio persistence.
 
+## MCP Server Architecture (NEW)
+
+**All 74+ financial analysis tools have been converted to Model Context Protocol (MCP) servers.**
+
+This provides:
+- ✅ **Standardized protocol** for tool communication (MCP spec)
+- ✅ **Standalone servers** that can run independently
+- ✅ **Better scalability** via separate processes
+- ✅ **Language-agnostic** integration with any MCP client
+- ✅ **Easier deployment** and monitoring
+- ✅ **Compatible with Claude Desktop** and other MCP clients
+
+### 9 MCP Servers
+
+| Server | File | Tools | Description |
+|--------|------|-------|-------------|
+| **portfolio-tools** | `mcp_servers/portfolio_server.py` | 6 | Portfolio valuation, allocation, concentration, Sharpe ratio |
+| **market-data-tools** | `mcp_servers/market_data_server.py` | 19+ | Yahoo Finance real-time data (quotes, fundamentals, news, SEC filings) |
+| **cashflow-tools** | `mcp_servers/cashflow_server.py` | 6 | Cash flow analysis, savings rate, burn rate, expense categorization |
+| **goal-tools** | `mcp_servers/goal_server.py` | 6 | Retirement planning, Monte Carlo simulations, FIRE calculations |
+| **debt-tools** | `mcp_servers/debt_server.py` | 6 | Debt payoff strategies, avalanche vs snowball, DTI ratio |
+| **tax-tools** | `mcp_servers/tax_server.py` | 5 | Tax optimization, loss harvesting, Roth conversions |
+| **risk-tools** | `mcp_servers/risk_server.py` | 7 | Risk assessment, stress testing, VaR, insurance gaps |
+| **search-tools** | `mcp_servers/search_server.py` | 3 | Web search via Tavily API (general, news, financial) |
+| **portfolio-update-tools** | `mcp_servers/portfolio_update_server.py` | 5 | Update portfolio holdings, cash, expenses, credit cards |
+
+**📖 See `mcp_servers/README.md` for comprehensive documentation.**
+
+### MCP Configuration
+
+MCP servers are configured in `mcp_config.json`. To use with **Claude Desktop**, add to your config file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "portfolio-tools": {
+      "command": "python3",
+      "args": ["/absolute/path/to/personalPortfolioDeepAgent/mcp_servers/portfolio_server.py"]
+    },
+    "market-data-tools": {
+      "command": "python3",
+      "args": ["/absolute/path/to/personalPortfolioDeepAgent/mcp_servers/market_data_server.py"],
+      "env": {
+        "RAPIDAPI_KEY": "your_rapidapi_key_here"
+      }
+    }
+    // ... see mcp_config.json for all servers
+  }
+}
+```
+
+### Running MCP Servers
+
+```bash
+# Run individual server
+python3 mcp_servers/portfolio_server.py
+
+# With environment variables
+RAPIDAPI_KEY=your_key python3 mcp_servers/market_data_server.py
+
+# All servers are standalone - no dependencies on main agent
+```
+
+### Migration Notes
+
+The original LangChain `@tool` decorated functions in `src/tools/*.py` have been:
+- ✅ Converted to MCP server implementations
+- ✅ Logic preserved 100% (identical calculations)
+- ✅ Enhanced with MCP protocol for standardized communication
+- ✅ Made independently executable
+
+The original tool files remain in `src/tools/` for reference and backward compatibility with the existing DeepAgents architecture.
+
 ## Development Commands
 
 ### Setup
