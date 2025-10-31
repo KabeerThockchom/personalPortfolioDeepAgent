@@ -1,5 +1,8 @@
 """Subagent definitions for financial analysis deep agent."""
 
+from datetime import datetime
+from typing import List, Dict, Any
+
 from src.tools.portfolio_tools import (
     calculate_portfolio_value,
     calculate_asset_allocation,
@@ -567,3 +570,44 @@ FINANCIAL_SUBAGENTS = [
     TAX_SUBAGENT,
     RISK_SUBAGENT,
 ]
+
+
+# Datetime prefix template for all subagent system prompts
+DATETIME_PREFIX_TEMPLATE = """## Current Date & Time
+**{current_datetime}**
+
+Always use this date for time-sensitive calculations (e.g., age calculations, time horizons, data freshness, historical comparisons).
+
+---
+
+"""
+
+
+def format_subagents_with_datetime(
+    subagents: List[Dict[str, Any]],
+    current_datetime: str = None
+) -> List[Dict[str, Any]]:
+    """
+    Format all subagent system prompts with current date/time awareness.
+
+    Args:
+        subagents: List of subagent configuration dictionaries
+        current_datetime: Current datetime string (defaults to now)
+
+    Returns:
+        List of subagent configs with datetime-aware system prompts
+    """
+    if current_datetime is None:
+        current_datetime = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
+
+    # Create datetime prefix
+    datetime_prefix = DATETIME_PREFIX_TEMPLATE.format(current_datetime=current_datetime)
+
+    # Format each subagent with datetime prefix
+    formatted_subagents = []
+    for subagent in subagents:
+        formatted_subagent = subagent.copy()
+        formatted_subagent["system_prompt"] = datetime_prefix + subagent["system_prompt"]
+        formatted_subagents.append(formatted_subagent)
+
+    return formatted_subagents

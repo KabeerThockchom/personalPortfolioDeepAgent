@@ -1,3 +1,5 @@
+from src.utils.tool_logger import logged_tool
+
 """Portfolio analysis calculation tools."""
 
 from langchain_core.tools import tool
@@ -6,6 +8,7 @@ from typing import Dict, List
 
 
 @tool
+@logged_tool
 def calculate_portfolio_value(holdings: List[Dict], current_prices: Dict[str, float]) -> Dict:
     """
     Calculate total portfolio value across all holdings.
@@ -45,6 +48,7 @@ def calculate_portfolio_value(holdings: List[Dict], current_prices: Dict[str, fl
 
 
 @tool
+@logged_tool
 def calculate_asset_allocation(holdings: List[Dict], current_prices: Dict[str, float]) -> Dict:
     """
     Calculate asset allocation breakdown by asset class.
@@ -85,6 +89,7 @@ def calculate_asset_allocation(holdings: List[Dict], current_prices: Dict[str, f
 
 
 @tool
+@logged_tool
 def calculate_concentration_risk(holdings: List[Dict], current_prices: Dict[str, float]) -> Dict:
     """
     Analyze concentration risk - largest positions as % of portfolio.
@@ -140,6 +145,7 @@ def calculate_concentration_risk(holdings: List[Dict], current_prices: Dict[str,
 
 
 @tool
+@logged_tool
 def calculate_sharpe_ratio(returns: List[float], risk_free_rate: float = 0.04) -> float:
     """
     Calculate Sharpe ratio for a portfolio.
@@ -173,6 +179,7 @@ def calculate_sharpe_ratio(returns: List[float], risk_free_rate: float = 0.04) -
 
 
 @tool
+@logged_tool
 def check_rebalancing_needs(
     current_allocation: Dict[str, float],
     target_allocation: Dict[str, float],
@@ -218,6 +225,7 @@ def check_rebalancing_needs(
 
 
 @tool
+@logged_tool
 def generate_allocation_chart(allocation: Dict[str, float]) -> Dict:
     """
     Generate pie chart data for asset allocation.

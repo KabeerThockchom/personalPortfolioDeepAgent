@@ -1,3 +1,5 @@
+from src.utils.tool_logger import logged_tool
+
 """Risk assessment calculation tools."""
 
 from langchain_core.tools import tool
@@ -6,6 +8,7 @@ from typing import Dict, List
 
 
 @tool
+@logged_tool
 def calculate_emergency_fund_adequacy(
     liquid_assets: float,
     monthly_expenses: float
@@ -48,6 +51,7 @@ def calculate_emergency_fund_adequacy(
 
 
 @tool
+@logged_tool
 def analyze_insurance_gaps(
     current_coverage: Dict,
     recommended_coverage: Dict
@@ -95,6 +99,7 @@ def analyze_insurance_gaps(
 
 
 @tool
+@logged_tool
 def calculate_portfolio_volatility(
     asset_allocation: Dict[str, float],
     volatility_by_asset: Dict[str, float] = None
@@ -147,6 +152,7 @@ def calculate_portfolio_volatility(
 
 
 @tool
+@logged_tool
 def run_stress_test_scenarios(
     portfolio_value: float,
     equity_percentage: float,
@@ -200,6 +206,7 @@ def run_stress_test_scenarios(
 
 
 @tool
+@logged_tool
 def calculate_value_at_risk(
     portfolio_value: float,
     portfolio_volatility: float,
@@ -241,6 +248,7 @@ def calculate_value_at_risk(
 
 
 @tool
+@logged_tool
 def analyze_concentration_risk(
     holdings_by_sector: Dict[str, float],
     holdings_by_geography: Dict[str, float]
@@ -288,6 +296,7 @@ def analyze_concentration_risk(
 
 
 @tool
+@logged_tool
 def generate_risk_dashboard(risk_metrics: Dict) -> Dict:
     """
     Generate risk dashboard visualization data.

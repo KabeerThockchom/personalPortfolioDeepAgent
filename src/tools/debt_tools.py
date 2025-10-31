@@ -1,3 +1,5 @@
+from src.utils.tool_logger import logged_tool
+
 """Debt management calculation tools."""
 
 from langchain_core.tools import tool
@@ -5,6 +7,7 @@ from typing import Dict, List
 
 
 @tool
+@logged_tool
 def calculate_debt_payoff_timeline(
     debts: List[Dict],
     extra_monthly_payment: float = 0
@@ -66,6 +69,7 @@ def calculate_debt_payoff_timeline(
 
 
 @tool
+@logged_tool
 def compare_avalanche_vs_snowball(debts: List[Dict], extra_payment: float) -> Dict:
     """
     Compare debt avalanche (highest rate first) vs snowball (lowest balance first).
@@ -138,6 +142,7 @@ def compare_avalanche_vs_snowball(debts: List[Dict], extra_payment: float) -> Di
 
 
 @tool
+@logged_tool
 def calculate_total_interest_cost(debts: List[Dict]) -> Dict:
     """
     Calculate total lifetime interest cost of all debts at current payment rate.
@@ -193,6 +198,7 @@ def calculate_total_interest_cost(debts: List[Dict]) -> Dict:
 
 
 @tool
+@logged_tool
 def optimize_extra_payment_allocation(debts: List[Dict], extra_amount: float) -> Dict:
     """
     Determine optimal allocation of extra payment across debts (avalanche method).
@@ -238,6 +244,7 @@ def optimize_extra_payment_allocation(debts: List[Dict], extra_amount: float) ->
 
 
 @tool
+@logged_tool
 def calculate_debt_to_income_ratio(total_debt_payments: float, gross_monthly_income: float) -> Dict:
     """
     Calculate debt-to-income ratio.
@@ -275,6 +282,7 @@ def calculate_debt_to_income_ratio(total_debt_payments: float, gross_monthly_inc
 
 
 @tool
+@logged_tool
 def generate_payoff_chart(debts: List[Dict]) -> Dict:
     """
     Generate debt payoff waterfall chart data.

@@ -1,3 +1,5 @@
+from src.utils.tool_logger import logged_tool
+
 """
 Web Search Tools using Tavily API
 
@@ -22,6 +24,7 @@ tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 
 
 @tool
+@logged_tool
 def web_search(
     query: str,
     search_depth: str = "basic",
@@ -99,6 +102,7 @@ def web_search(
 
 
 @tool
+@logged_tool
 def web_search_news(
     query: str,
     days: int = 7,
@@ -161,6 +165,7 @@ def web_search_news(
 
 
 @tool
+@logged_tool
 def web_search_financial(
     query: str,
     max_results: int = 5

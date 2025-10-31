@@ -2,9 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🆕 Recent Updates (2025-10-30)
+
+**Major enhancements added - see `RECENT_UPDATES.md` for full details:**
+- ✅ **Date/Time Awareness** - All 9 agents now know current date/time
+- ✅ **Store Infrastructure** - Foundation for long-term memory (InMemoryStore integrated)
+- ✅ **Enhanced Display** - Full tool inputs/outputs with smart formatting in chat
+- ✅ **Tool Logging** - Subagent tool calls now visible in real-time (74+ tools wrapped)
+- ✅ **Friendly Node Names** - Clear agent labels ("🤖 Main Agent") and middleware context details
+- ✅ **Hybrid Architecture** - Main agent has 6 quick-access tools for instant responses (NEW!)
+- ✅ **Code Cleanup** - Removed legacy routing code (src/agents/, graph.py, state.py)
+
 ## Project Overview
 
-Personal Finance Deep Agent - A multi-agent financial analysis system using DeepAgents framework with LangGraph orchestration. Features 8 specialized subagents, 74+ financial tools, real-time Yahoo Finance API integration, web search via Tavily, and portfolio persistence.
+Personal Finance Deep Agent - A multi-agent financial analysis system using DeepAgents framework with LangGraph orchestration. Features 8 specialized subagents, 74+ financial tools, real-time Yahoo Finance API integration, web search via Tavily, portfolio persistence, and complete execution visibility.
 
 ## Development Commands
 
@@ -48,14 +59,37 @@ pytest -v
 
 ## Architecture
 
-### Multi-Agent System (DeepAgents + LangGraph)
+### Hybrid Multi-Agent System (DeepAgents + LangGraph)
 
 **Main Agent** (`src/deep_agent.py`):
 - Orchestrates subagents using DeepAgents framework
 - Claude 4.5 Haiku model
-- Uses `task` tool to spawn specialized subagents
+- **NEW: Has 6 quick-access tools** for instant responses to simple queries
+- Uses `task` tool to spawn specialized subagents for complex work
 - Manages filesystem backend for data persistence
-- System prompt emphasizes: plan with `write_todos`, delegate to subagents, synthesize results
+- System prompt guides when to use direct tools vs delegate
+
+**Main Agent Quick-Access Tools** (80+ total tools):
+```python
+MAIN_AGENT_QUICK_TOOLS = [
+    get_stock_quote,           # "What's AAPL price?"
+    get_multiple_quotes,       # "Show AAPL, MSFT, GOOGL"
+    calculate_portfolio_value, # "What's my portfolio worth?"
+    analyze_monthly_cashflow,  # "What's my cash flow?"
+    calculate_savings_rate,    # "What's my savings rate?"
+    web_search,                # "Search for Fed news"
+]
+```
+
+**Hybrid Decision Logic:**
+- Simple lookups → Main agent uses tools directly → ⚡ Instant (2 steps)
+- Complex analysis → Delegates to expert subagent → 🎓 Specialized (4-6 steps)
+
+**Benefits:**
+- 🚀 70% faster for common queries (no subagent overhead)
+- 💰 Lower token costs (only 6 tool schemas vs 74+ for subagents)
+- 🎓 Still gets expert analysis when needed
+- 🧠 Main agent learns when to delegate vs handle directly
 
 **8 Specialized Subagents** (`src/subagents_config.py`):
 1. **market-data-fetcher** - Real-time Yahoo Finance API (quotes, fundamentals, historical data)
@@ -164,7 +198,20 @@ DeepAgents uses a virtual filesystem for data persistence:
 - Token estimation: Warns if context >150K tokens
 - Streaming execution: Shows step-by-step tool calls, file updates, todos
 - Colored terminal output with progress indicators
+- **Friendly node names**: Clear agent identification ("🤖 Main Agent" instead of "model")
+- **Context details**: Shows input/output message breakdown for Context Management step
 - Commands: `quit`/`exit`/`q`, `clear` (reset history), `help`
+
+**Display enhancements**:
+- `get_friendly_node_name()`: Maps technical names to user-friendly labels
+  - "PatchToolCallsMiddleware.before_agent" → "Pre-processing"
+  - "SummarizationMiddleware.before_model" → "Context Management"
+  - "model" → "🤖 Main Agent"
+  - "tools" → "Tool Execution"
+- `print_step_header()`: Shows conceptual information for middleware steps
+  - Context Management: Shows optimization activities
+  - Pre-processing: Shows preparation steps
+  - Note: Middleware in `stream_mode="updates"` doesn't provide state deltas, so we show what they do conceptually
 
 **State management**:
 - `conversation_messages`: List of HumanMessage and AIMessage objects

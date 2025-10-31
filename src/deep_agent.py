@@ -1,19 +1,50 @@
 """Main deep agent for personal finance analysis using DeepAgents."""
 
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
+from langgraph.store.memory import InMemoryStore
 
 from .backends_config import get_default_backend
-from .subagents_config import FINANCIAL_SUBAGENTS
+from .subagents_config import FINANCIAL_SUBAGENTS, format_subagents_with_datetime
+
+# Import most common tools for main agent quick access
+from .tools.market_data_tools import get_stock_quote, get_multiple_quotes
+from .tools.portfolio_tools import calculate_portfolio_value
+from .tools.cashflow_tools import analyze_monthly_cashflow, calculate_savings_rate
+from .tools.search_tools import web_search
 
 # Load environment variables
 load_dotenv()
 
 
+# Main agent quick-access tools for simple requests
+MAIN_AGENT_QUICK_TOOLS = [
+    # Market data (most common requests - "what's the price of X?")
+    get_stock_quote,           # Single stock lookup
+    get_multiple_quotes,       # Multiple stocks at once
+
+    # Portfolio basics (quick portfolio value check)
+    calculate_portfolio_value,
+
+    # Cash flow basics (quick financial health check)
+    analyze_monthly_cashflow,
+    calculate_savings_rate,
+
+    # Web search (quick news/research lookup)
+    web_search,
+]
+
+
 # Main agent system prompt
 FINANCE_AGENT_SYSTEM_PROMPT = """You are a Personal Finance AI Assistant powered by specialized analysis agents.
+
+## Current Date & Time
+**{current_datetime}**
+
+Always use this date for time-sensitive analysis (e.g., age calculations, time horizons, market data freshness).
 
 ## Your Role
 You help users analyze their complete financial picture and provide comprehensive, actionable advice on:
@@ -23,6 +54,40 @@ You help users analyze their complete financial picture and provide comprehensiv
 - Debt optimization
 - Tax strategies
 - Risk assessment
+
+## Quick Tools vs Subagent Delegation 🎯
+
+You have **direct access to 6 common tools** for fast responses to simple queries:
+
+**When to use YOUR tools directly** (faster, 1-step response):
+- ✅ "What's the price of AAPL?" → Use `get_stock_quote` directly
+- ✅ "Show me AAPL, MSFT, GOOGL prices" → Use `get_multiple_quotes` directly
+- ✅ "What's my portfolio worth?" → Use `calculate_portfolio_value` directly
+- ✅ "What's my savings rate?" → Use `calculate_savings_rate` directly
+- ✅ "Search for news about Fed rates" → Use `web_search` directly
+
+**When to delegate to subagents** (complex/specialized work):
+- 🎓 Complex analysis: Monte Carlo simulations, tax optimization, risk modeling
+- 🎓 Multi-step workflows: Portfolio rebalancing, debt avalanche strategy
+- 🎓 Specialized data: ESG scores, insider transactions, analyst ratings, fundamentals
+- 🎓 Domain expertise: Retirement projections, tax strategies, insurance gaps
+
+**Examples:**
+```
+Simple: "What's META trading at?"
+→ Use get_stock_quote("META") directly ⚡
+
+Complex: "Should I buy META based on fundamentals and analyst ratings?"
+→ Delegate to research-analyst subagent 🎓
+
+Simple: "What's my current portfolio value?"
+→ Use calculate_portfolio_value() directly ⚡
+
+Complex: "Analyze my portfolio allocation and suggest rebalancing"
+→ Delegate to portfolio-analyzer subagent 🎓
+```
+
+**Key principle:** Use your tools for quick lookups. Delegate for analysis that needs expertise.
 
 ## How You Work
 
@@ -43,22 +108,34 @@ Your plan (write_todos):
 ```
 
 ### 2. Using the Filesystem
-Organize your work with files:
 
-**Persistent directories** (saved across sessions):
+You have access to a virtual filesystem for organizing your work:
+
+**Persistent Storage** (saved in current conversation thread):
 - `/financial_data/` - User financial data (portfolios, accounts, transactions)
 - `/user_profiles/` - User preferences, risk tolerance, goals
 - `/reports/` - Final analysis reports
 - `/analysis_history/` - Past analyses for reference
 
-**Ephemeral directories** (temporary, current session only):
+**Temporary Storage** (ephemeral, current session only):
 - `/working/` - Scratch space for calculations
 - `/temp/` - Temporary intermediate files
+- `/cache/` - API response cache
+
+**Best Practices:**
+- Save important analyses and reports to `/reports/`
+- Store user preferences in `/user_profiles/`
+- Use `/working/` for intermediate calculations
+- Keep financial data organized in `/financial_data/`
 
 **Workflow pattern**:
-1. Read financial data: `read_file("/financial_data/user_portfolio.json")`
-2. Write analysis to working: `write_file("/working/portfolio_analysis.txt", content)`
-3. Save final report: `write_file("/reports/financial_review_2025-10-29.md", report)`
+1. Check for user preferences: `read_file("/user_profiles/preferences.txt")`
+2. Load current data: `read_file("/financial_data/user_portfolio.json")`
+3. Work in scratch: `write_file("/working/portfolio_analysis.txt", content)`
+4. Save final report: `write_file("/reports/financial_review_{current_datetime}.md", report)`
+
+**Note:** Files persist within the current conversation thread. For cross-session persistence,
+the actual portfolio.json file at the project root is updated by portfolio_update_tools.py.
 
 ### 3. Delegating to Specialized Subagents
 Use the `task` tool to spawn specialized agents for focused analysis.
@@ -258,30 +335,50 @@ def create_finance_deep_agent(
 
     Args:
         model: Model to use (default: claude-haiku-4-5)
-        store: LangGraph BaseStore for persistent storage (optional)
+        store: LangGraph BaseStore for persistent storage (optional, defaults to InMemoryStore)
         additional_tools: Extra tools beyond subagents (optional)
         temperature: Model temperature (default: 0 for deterministic)
 
     Returns:
-        Compiled LangGraph agent
+        Compiled LangGraph agent with long-term memory support
     """
     # Create LLM
     llm = ChatAnthropic(model=model, temperature=temperature)
 
-    # Get backend (with or without persistent storage)
-    backend = get_default_backend()  # For now, no persistence
+    # Get backend
+    backend = get_default_backend()
 
-    # Combine tools
-    tools = additional_tools or []
+    # Create store if not provided (default to in-memory)
+    if store is None:
+        store = InMemoryStore()
 
-    # Create deep agent with all middleware
+    # Get current datetime for system prompt
+    current_datetime = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
+
+    # Format system prompt with current datetime
+    formatted_system_prompt = FINANCE_AGENT_SYSTEM_PROMPT.format(
+        current_datetime=current_datetime
+    )
+
+    # Format all subagents with datetime awareness
+    formatted_subagents = format_subagents_with_datetime(
+        FINANCIAL_SUBAGENTS,
+        current_datetime=current_datetime
+    )
+
+    # Combine quick-access tools with any additional tools
+    tools = MAIN_AGENT_QUICK_TOOLS.copy()
+    if additional_tools:
+        tools.extend(additional_tools)
+
+    # Create deep agent with long-term memory (enabled automatically via store)
     agent = create_deep_agent(
         model=llm,
-        tools=tools,
-        subagents=FINANCIAL_SUBAGENTS,
-        system_prompt=FINANCE_AGENT_SYSTEM_PROMPT,
+        tools=tools,  # Main agent now has quick-access tools + any additional
+        subagents=formatted_subagents,  # Use datetime-aware subagents
+        system_prompt=formatted_system_prompt,
         backend=backend,
-        store=store,  # None for now, can add later
+        store=store,  # Long-term memory enabled by providing a Store
     )
 
     return agent
@@ -291,5 +388,7 @@ if __name__ == "__main__":
     # Test agent creation
     agent = create_finance_deep_agent()
     print("✓ Finance deep agent created successfully")
+    print(f"✓ Main agent quick-access tools: {len(MAIN_AGENT_QUICK_TOOLS)}")
+    print(f"  - {', '.join([tool.name for tool in MAIN_AGENT_QUICK_TOOLS])}")
     print(f"✓ Subagents available: {len(FINANCIAL_SUBAGENTS)}")
     print(f"✓ Agent nodes: {list(agent.nodes.keys())}")

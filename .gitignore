@@ -148,3 +148,5 @@ credentials.json
 # Logs
 *.log
 logs/
+.claude
+.playwright-mcp

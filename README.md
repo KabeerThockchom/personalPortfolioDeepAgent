@@ -1,17 +1,53 @@
 # Personal Finance Deep Agent 🤖💰
 
-A production-ready multi-agent financial analysis system powered by **DeepAgents**, **LangGraph**, and **Claude 4.5 4.5 Haiku**. Features real-time market data, web search capabilities, and intelligent portfolio management with 74+ specialized financial tools across 8 expert subagents.
+A production-ready multi-agent financial analysis system powered by **DeepAgents**, **LangGraph**, and **Claude 4.5 Haiku**. Features real-time market data, web search capabilities, intelligent portfolio management, and **complete execution visibility** with 74+ specialized financial tools across 8 expert subagents.
+
+## 🆕 Recent Updates (2025-10-30)
+
+**Major enhancements added - see `RECENT_UPDATES.md` for full details:**
+- ✅ **Date/Time Awareness** - All agents now know current date/time for accurate calculations
+- ✅ **Store Infrastructure** - LangGraph Store integrated for future cross-session memory
+- ✅ **Enhanced Display** - Full tool inputs/outputs with smart formatting in terminal
+- ✅ **Tool Logging** - Subagent tool calls now visible in real-time (even in "black box" subagents)
+- ✅ **Friendly Node Names** - Clear agent labels ("🤖 Main Agent") and context details
+- ✅ **Hybrid Agent Architecture** - Main agent has 6 quick-access tools for instant responses (NEW!)
+- ✅ **Code Cleanup** - Removed legacy routing code for cleaner architecture
+
+**Hybrid Architecture = Best of Both Worlds:**
+- **Simple queries** → Main agent uses tools directly → ⚡ **Instant response** (2 steps)
+  - "What's AAPL price?" → Direct `get_stock_quote` call → Done!
+- **Complex analysis** → Delegates to expert subagents → 🎓 **Specialized expertise**
+  - "Analyze portfolio risk" → Spawns `risk-assessor` → Expert analysis
+
+**Complete Visibility:**
+- Which agent is executing (Main Agent clearly labeled)
+- What middleware is doing (Pre-processing, Context Management)
+- Which tools are being called with full arguments
+- What results are returned with smart formatting
 
 ## ✨ Key Features
 
+### Architecture
+⚡ **Hybrid Agent System** - Main agent handles simple queries instantly, delegates complex work to specialists
+🤖 **8 Specialized Subagents** - Market data, research, portfolio, cash flow, goals, debt, tax, risk
+📊 **80+ Financial Tools** - 6 quick-access tools + 74+ specialized tools across subagents
+
+### Data & Integration
 🔥 **Real-Time Market Data** - Yahoo Finance API integration with 30+ endpoints
 🔍 **Web Search** - Tavily API for current news, events, and financial analysis
-💼 **Portfolio Updates** - Persist trades, expenses, and transactions to disk
-🤖 **8 Specialized Agents** - Market data, research, portfolio, cash flow, goals, debt, tax, risk
-📊 **74+ Financial Tools** - Comprehensive calculations and analysis
-💬 **Interactive Chat** - Natural language financial assistant
-🎯 **Monte Carlo Simulations** - Probabilistic retirement projections
-⚡ **API Caching** - Smart response optimization and rate limiting
+💼 **Portfolio Persistence** - Trades, expenses, and transactions saved to disk
+⚡ **Smart API Caching** - 15-minute TTL, response optimization, rate limiting
+
+### User Experience
+💬 **Interactive Chat** - Natural language with streaming execution and colored output
+👁️ **Complete Visibility** - See every tool call with inputs/outputs (even from subagents!)
+🏷️ **Friendly Node Names** - Clear agent labels ("🤖 Main Agent") and middleware context
+📅 **Time-Aware** - All agents know current date/time for accurate calculations
+
+### Advanced Features
+🎯 **Monte Carlo Simulations** - Probabilistic retirement projections with 10,000 scenarios
+💾 **Store Infrastructure** - Foundation for long-term memory across sessions
+🔄 **Parallel Execution** - Independent subagents run simultaneously for speed
 
 ---
 

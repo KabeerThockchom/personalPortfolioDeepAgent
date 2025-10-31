@@ -1,3 +1,5 @@
+from src.utils.tool_logger import logged_tool
+
 """Goal planning and retirement calculation tools."""
 
 from langchain_core.tools import tool
@@ -6,6 +8,7 @@ from typing import Dict, List
 
 
 @tool
+@logged_tool
 def calculate_retirement_gap(
     current_savings: float,
     desired_annual_income: float,
@@ -63,6 +66,7 @@ def calculate_retirement_gap(
 
 
 @tool
+@logged_tool
 def run_monte_carlo_simulation(
     current_savings: float,
     monthly_contribution: float,
@@ -122,6 +126,7 @@ def run_monte_carlo_simulation(
 
 
 @tool
+@logged_tool
 def calculate_required_savings_rate(
     current_age: int,
     retirement_age: int,
@@ -182,6 +187,7 @@ def calculate_required_savings_rate(
 
 
 @tool
+@logged_tool
 def calculate_fire_number(
     annual_expenses: float,
     withdrawal_rate: float = 0.04,
@@ -218,6 +224,7 @@ def calculate_fire_number(
 
 
 @tool
+@logged_tool
 def project_college_funding(
     current_savings: float,
     target_amount: float,
@@ -272,6 +279,7 @@ def project_college_funding(
 
 
 @tool
+@logged_tool
 def generate_monte_carlo_chart(percentiles: Dict[str, float], years: int) -> Dict:
     """
     Generate Monte Carlo fan chart data.

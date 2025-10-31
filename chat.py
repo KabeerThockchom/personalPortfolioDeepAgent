@@ -123,6 +123,8 @@ def print_banner():
     print(f"\n{Colors.OKGREEN}✨ Smart Features:{Colors.ENDC}")
     print(f"  • Auto-pruning: Keeps last {MAX_CONVERSATION_TURNS} turns to prevent context bloat")
     print(f"  • Large API responses auto-saved to /financial_data/")
+    print(f"  • Live tool execution display with inputs and outputs")
+    print(f"  • Subagent tool calls shown with indentation and context")
     print(f"\n{Colors.OKGREEN}Tip: I work best when you load portfolio data first!{Colors.ENDC}\n")
 
 def print_thinking():
@@ -139,52 +141,213 @@ def print_error(text):
     """Print error message."""
     print(f"\n{Colors.FAIL}❌ Error: {text}{Colors.ENDC}\n")
 
-def print_step_header(step_num, node_name):
-    """Print step header."""
-    print(f"\n{Colors.BOLD}━━━ Step {step_num}: {node_name} ━━━{Colors.ENDC}")
+def get_friendly_node_name(node_name):
+    """Convert technical node names to user-friendly names."""
+    # Map technical names to user-friendly names
+    name_map = {
+        "PatchToolCallsMiddleware.before_agent": "Pre-processing",
+        "SummarizationMiddleware.before_model": "Context Management",
+        "model": "🤖 Main Agent",
+        "tools": "Tool Execution",
+    }
 
-def print_tool_call(tool_name, args):
-    """Print tool call details."""
+    return name_map.get(node_name, node_name)
+
+def print_step_header(step_num, node_name, state_update=None):
+    """Print step header with friendly names."""
+    friendly_name = get_friendly_node_name(node_name)
+    print(f"\n{Colors.BOLD}━━━ Step {step_num}: {friendly_name} ━━━{Colors.ENDC}")
+
+    # For middleware steps, show what they're doing
+    if node_name == "SummarizationMiddleware.before_model":
+        # Note: Middleware steps in stream_mode="updates" don't provide state deltas,
+        # only full state modifications. We can't see the actual messages here.
+        print(f"{Colors.OKCYAN}   Optimizing conversation context for the model{Colors.ENDC}")
+        print(f"{Colors.OKCYAN}   • Checking message history size{Colors.ENDC}")
+        print(f"{Colors.OKCYAN}   • Preparing context window{Colors.ENDC}")
+
+    elif node_name == "PatchToolCallsMiddleware.before_agent":
+        # Show what pre-processing is doing
+        print(f"{Colors.OKCYAN}   Preparing request for agent execution{Colors.ENDC}")
+
+def format_value(value, max_length=500):
+    """Format a value for display with smart truncation."""
+    if isinstance(value, dict):
+        # Pretty print dicts as JSON
+        try:
+            formatted = json.dumps(value, indent=2)
+            if len(formatted) > max_length:
+                # Show first part with ellipsis
+                return formatted[:max_length] + "\n    ... (truncated)"
+            return formatted
+        except:
+            value_str = str(value)
+    elif isinstance(value, list):
+        # Show list length and first few items
+        if len(value) > 5:
+            preview = value[:5]
+            return f"{preview}... ({len(value)} items total)"
+        value_str = str(value)
+    else:
+        value_str = str(value)
+
+    if len(value_str) > max_length:
+        return value_str[:max_length] + "... (truncated)"
+    return value_str
+
+def print_tool_call(tool_name, args, indent=""):
+    """Print tool call details with full arguments."""
     if tool_name == "task":
         # Subagent spawn
         subagent_type = args.get("subagent_type", "unknown")
-        description = args.get("description", "")[:100]
-        print(f"{Colors.WARNING}{Colors.BOLD}🚀 SPAWNING SUBAGENT: {subagent_type}{Colors.ENDC}")
-        print(f"{Colors.WARNING}   Description: {description}...{Colors.ENDC}")
+        description = args.get("description", "")
+        print(f"{indent}{Colors.WARNING}{Colors.BOLD}🚀 SPAWNING SUBAGENT: {subagent_type}{Colors.ENDC}")
+        if description:
+            # Show full description with wrapping
+            lines = [description[i:i+80] for i in range(0, len(description), 80)]
+            for line in lines:
+                print(f"{indent}{Colors.WARNING}   Description: {line}{Colors.ENDC}")
     elif tool_name == "write_file":
         path = args.get("file_path", "?")
-        print(f"{Colors.OKBLUE}📝 Writing file: {path}{Colors.ENDC}")
+        content = args.get("content", "")
+        content_preview = content[:150] if content else "(empty)"
+        print(f"{indent}{Colors.OKBLUE}📝 Writing file: {path}{Colors.ENDC}")
+        print(f"{indent}{Colors.OKBLUE}   Content preview: {content_preview}...{Colors.ENDC}")
     elif tool_name == "edit_file":
         path = args.get("file_path", "?")
-        print(f"{Colors.OKBLUE}✏️  Editing file: {path}{Colors.ENDC}")
+        old_string = args.get("old_string", "")[:100]
+        new_string = args.get("new_string", "")[:100]
+        print(f"{indent}{Colors.OKBLUE}✏️  Editing file: {path}{Colors.ENDC}")
+        print(f"{indent}{Colors.OKBLUE}   Old: {old_string}...{Colors.ENDC}")
+        print(f"{indent}{Colors.OKBLUE}   New: {new_string}...{Colors.ENDC}")
     elif tool_name == "read_file":
         path = args.get("file_path", "?")
-        print(f"{Colors.OKCYAN}📖 Reading file: {path}{Colors.ENDC}")
+        print(f"{indent}{Colors.OKCYAN}📖 Reading file: {path}{Colors.ENDC}")
     elif tool_name == "ls":
         path = args.get("path", "/")
-        print(f"{Colors.OKCYAN}📂 Listing directory: {path}{Colors.ENDC}")
+        print(f"{indent}{Colors.OKCYAN}📂 Listing directory: {path}{Colors.ENDC}")
     elif tool_name == "write_todos":
         todos = args.get("todos", [])
-        print(f"{Colors.WARNING}📋 Planning {len(todos)} tasks{Colors.ENDC}")
+        print(f"{indent}{Colors.WARNING}📋 Planning {len(todos)} tasks{Colors.ENDC}")
+        for i, todo in enumerate(todos[:3], 1):  # Show first 3
+            content = todo.get("content", "")
+            print(f"{indent}{Colors.WARNING}   {i}. {content}{Colors.ENDC}")
+        if len(todos) > 3:
+            print(f"{indent}{Colors.WARNING}   ... and {len(todos)-3} more{Colors.ENDC}")
     elif tool_name.startswith("get_") and ("stock" in tool_name or "quote" in tool_name or "search" in tool_name):
         # Yahoo Finance tools
-        symbol = args.get("symbol", args.get("query", ""))
+        symbol = args.get("symbol", args.get("symbols", args.get("query", "")))
+        print(f"{indent}{Colors.OKGREEN}📊 Yahoo Finance API: {tool_name}{Colors.ENDC}")
         if symbol:
-            print(f"{Colors.OKGREEN}📊 Yahoo Finance API: {tool_name} ({symbol}){Colors.ENDC}")
-        else:
-            print(f"{Colors.OKGREEN}📊 Yahoo Finance API: {tool_name}{Colors.ENDC}")
+            print(f"{indent}{Colors.OKGREEN}   Symbol(s): {symbol}{Colors.ENDC}")
+        # Show other relevant args
+        for key, value in args.items():
+            if key not in ["symbol", "symbols", "query"] and value:
+                print(f"{indent}{Colors.OKGREEN}   {key}: {value}{Colors.ENDC}")
+    elif tool_name.startswith("web_search"):
+        # Web search tools
+        query = args.get("query", "")
+        print(f"{indent}{Colors.OKGREEN}🔍 Web Search: {tool_name}{Colors.ENDC}")
+        print(f"{indent}{Colors.OKGREEN}   Query: {query}{Colors.ENDC}")
+        if "max_results" in args:
+            print(f"{indent}{Colors.OKGREEN}   Max results: {args['max_results']}{Colors.ENDC}")
     else:
-        # Regular tool
-        print(f"{Colors.OKGREEN}🔧 Tool: {tool_name}{Colors.ENDC}")
-        # Show args preview for calculation tools
+        # Regular tool - show all args
+        print(f"{indent}{Colors.OKGREEN}🔧 Tool: {tool_name}{Colors.ENDC}")
         if args:
-            args_preview = str(args)[:100]
-            print(f"{Colors.OKGREEN}   Args: {args_preview}...{Colors.ENDC}")
+            # Show formatted arguments
+            for key, value in args.items():
+                formatted_value = format_value(value, max_length=300)
+                # Handle multiline values
+                if '\n' in formatted_value:
+                    print(f"{indent}{Colors.OKGREEN}   {key}:{Colors.ENDC}")
+                    for line in formatted_value.split('\n'):
+                        print(f"{indent}{Colors.OKGREEN}     {line}{Colors.ENDC}")
+                else:
+                    print(f"{indent}{Colors.OKGREEN}   {key}: {formatted_value}{Colors.ENDC}")
 
-def print_tool_result(result):
-    """Print tool result preview."""
-    result_str = str(result)[:200]
-    print(f"{Colors.OKBLUE}   ✓ Result: {result_str}...{Colors.ENDC}")
+def print_tool_result(result, indent=""):
+    """Print tool result with smart formatting."""
+    # Try to parse as JSON first
+    if isinstance(result, str):
+        try:
+            # Try to parse as JSON
+            parsed = json.loads(result)
+            result = parsed
+        except:
+            pass
+
+    if isinstance(result, dict):
+        # Show key metrics from dict results
+        print(f"{indent}{Colors.OKBLUE}   ✓ Result:{Colors.ENDC}")
+
+        # Special handling for common result structures
+        if "success" in result:
+            success = result.get("success", False)
+            status = "✓ SUCCESS" if success else "✗ FAILED"
+            color = Colors.OKGREEN if success else Colors.FAIL
+            print(f"{indent}{color}     Status: {status}{Colors.ENDC}")
+
+        if "symbol" in result:
+            print(f"{indent}{Colors.OKBLUE}     Symbol: {result['symbol']}{Colors.ENDC}")
+
+        if "error" in result and result["error"]:
+            print(f"{indent}{Colors.FAIL}     Error: {result['error']}{Colors.ENDC}")
+
+        # Show summary if available
+        if "summary" in result:
+            summary = result["summary"]
+            # Print summary with line wrapping
+            lines = summary.split('\n') if isinstance(summary, str) else [str(summary)]
+            for line in lines[:10]:  # First 10 lines
+                print(f"{indent}{Colors.OKBLUE}     {line}{Colors.ENDC}")
+            if len(lines) > 10:
+                print(f"{indent}{Colors.OKBLUE}     ... ({len(lines)-10} more lines){Colors.ENDC}")
+
+        # Show key metrics
+        if "key_metrics" in result and result["key_metrics"]:
+            print(f"{indent}{Colors.OKBLUE}     Key Metrics:{Colors.ENDC}")
+            metrics = result["key_metrics"]
+            for key, value in list(metrics.items())[:5]:  # First 5 metrics
+                print(f"{indent}{Colors.OKBLUE}       • {key}: {value}{Colors.ENDC}")
+
+        # Show file path if saved
+        if "file_path" in result:
+            print(f"{indent}{Colors.OKBLUE}     Saved to: {result['file_path']}{Colors.ENDC}")
+
+        # Show data preview if it's a large response
+        if "data" in result and not ("summary" in result or "key_metrics" in result):
+            data_str = str(result["data"])[:200]
+            print(f"{indent}{Colors.OKBLUE}     Data preview: {data_str}...{Colors.ENDC}")
+
+    elif isinstance(result, list):
+        # Show list length and preview
+        print(f"{indent}{Colors.OKBLUE}   ✓ Result: List with {len(result)} items{Colors.ENDC}")
+        for i, item in enumerate(result[:3], 1):  # Show first 3
+            item_str = str(item)[:100]
+            print(f"{indent}{Colors.OKBLUE}     {i}. {item_str}{Colors.ENDC}")
+        if len(result) > 3:
+            print(f"{indent}{Colors.OKBLUE}     ... and {len(result)-3} more items{Colors.ENDC}")
+
+    else:
+        # Plain string or other type
+        result_str = str(result)
+        if len(result_str) > 500:
+            # Show first 500 chars
+            lines = result_str[:500].split('\n')
+            print(f"{indent}{Colors.OKBLUE}   ✓ Result:{Colors.ENDC}")
+            for line in lines[:10]:
+                print(f"{indent}{Colors.OKBLUE}     {line}{Colors.ENDC}")
+            print(f"{indent}{Colors.OKBLUE}     ... (truncated, {len(result_str)} chars total){Colors.ENDC}")
+        else:
+            # Show full result
+            lines = result_str.split('\n')
+            if len(lines) > 1:
+                print(f"{indent}{Colors.OKBLUE}   ✓ Result:{Colors.ENDC}")
+                for line in lines:
+                    print(f"{indent}{Colors.OKBLUE}     {line}{Colors.ENDC}")
+            else:
+                print(f"{indent}{Colors.OKBLUE}   ✓ Result: {result_str}{Colors.ENDC}")
 
 def load_portfolio():
     """Load the example portfolio from file."""
@@ -333,8 +496,22 @@ def run_chat():
                 step_count += 1
 
                 for node_name, state_update in chunk.items():
+                    # Detect if this is a subagent node
+                    is_subagent = node_name.startswith("SubAgent[") or "SubAgent" in node_name
+                    subagent_name = ""
+                    if is_subagent:
+                        # Extract subagent name from node like "SubAgent[market-data-fetcher]"
+                        if "[" in node_name and "]" in node_name:
+                            subagent_name = node_name.split("[")[1].split("]")[0]
+
+                    # Determine indentation based on context
+                    indent = "  " if is_subagent else ""
+
                     # Print step header
-                    print_step_header(step_count, node_name)
+                    if is_subagent:
+                        print(f"\n{Colors.BOLD}{Colors.OKCYAN}  ╭─── Subagent: {subagent_name} ───╮{Colors.ENDC}")
+                    else:
+                        print_step_header(step_count, node_name, state_update)
 
                     if state_update is None:
                         continue
@@ -349,29 +526,36 @@ def run_chat():
                                 for tool_call in msg.tool_calls:
                                     tool_name = tool_call.get("name", "unknown")
                                     tool_args = tool_call.get("args", {})
-                                    print_tool_call(tool_name, tool_args)
+                                    print_tool_call(tool_name, tool_args, indent=indent)
 
                             # Show tool results
                             elif msg.type == "tool":
-                                print_tool_result(msg.content)
+                                # Get tool name from the tool call name attribute
+                                tool_name = getattr(msg, 'name', 'unknown')
+                                print(f"{indent}{Colors.OKGREEN}  [{tool_name}] returned:{Colors.ENDC}")
+                                print_tool_result(msg.content, indent=indent)
 
                     # Show file updates
                     if "files" in state_update and state_update["files"]:
                         new_files = state_update["files"]
                         files.update(new_files)
-                        print(f"{Colors.OKBLUE}📁 Files updated: {len(new_files)} file(s){Colors.ENDC}")
+                        print(f"{indent}{Colors.OKBLUE}📁 Files updated: {len(new_files)} file(s){Colors.ENDC}")
                         for path in list(new_files.keys())[:3]:  # Show first 3
-                            print(f"{Colors.OKBLUE}   - {path}{Colors.ENDC}")
+                            print(f"{indent}{Colors.OKBLUE}   - {path}{Colors.ENDC}")
 
                     # Show todos
                     if "todos" in state_update and state_update["todos"]:
                         todos = state_update["todos"]
-                        print(f"{Colors.WARNING}📋 TODO LIST:{Colors.ENDC}")
+                        print(f"{indent}{Colors.WARNING}📋 TODO LIST:{Colors.ENDC}")
                         for todo in todos[:5]:  # Show first 5
                             status = todo.get("status", "unknown")
                             content = todo.get("content", "")
                             emoji = "✓" if status == "completed" else "⏳" if status == "in_progress" else "○"
-                            print(f"{Colors.WARNING}   {emoji} [{status}] {content}{Colors.ENDC}")
+                            print(f"{indent}{Colors.WARNING}   {emoji} [{status}] {content}{Colors.ENDC}")
+
+                    # Close subagent box
+                    if is_subagent:
+                        print(f"{Colors.OKCYAN}  ╰{'─' * 50}╯{Colors.ENDC}")
 
             # Add only new AI messages to conversation history
             for msg in new_messages:

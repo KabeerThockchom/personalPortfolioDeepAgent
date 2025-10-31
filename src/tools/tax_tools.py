@@ -1,3 +1,5 @@
+from src.utils.tool_logger import logged_tool
+
 """Tax optimization calculation tools."""
 
 from langchain_core.tools import tool
@@ -5,6 +7,7 @@ from typing import Dict, List
 
 
 @tool
+@logged_tool
 def calculate_effective_tax_rate(
     gross_income: float,
     total_taxes_paid: float
@@ -30,6 +33,7 @@ def calculate_effective_tax_rate(
 
 
 @tool
+@logged_tool
 def identify_tax_loss_harvesting_opportunities(
     holdings: List[Dict],
     current_prices: Dict[str, float]
@@ -83,6 +87,7 @@ def identify_tax_loss_harvesting_opportunities(
 
 
 @tool
+@logged_tool
 def analyze_roth_conversion_opportunity(
     current_income: float,
     marginal_tax_bracket: float,
@@ -117,6 +122,7 @@ def analyze_roth_conversion_opportunity(
 
 
 @tool
+@logged_tool
 def optimize_withdrawal_sequence(
     taxable_balance: float,
     tax_deferred_balance: float,
@@ -179,6 +185,7 @@ def optimize_withdrawal_sequence(
 
 
 @tool
+@logged_tool
 def calculate_capital_gains_tax(
     cost_basis: float,
     sale_price: float,

@@ -1,3 +1,5 @@
+from src.utils.tool_logger import logged_tool
+
 """
 Portfolio Update Tools - Persist changes to portfolio.json
 
@@ -35,6 +37,7 @@ def _save_portfolio(portfolio: dict) -> None:
 
 
 @tool
+@logged_tool
 def update_investment_holding(
     account_name: str,
     ticker: str,
@@ -158,6 +161,7 @@ def update_investment_holding(
 
 
 @tool
+@logged_tool
 def update_cash_balance(
     account_type: str,
     amount: float,
@@ -231,6 +235,7 @@ def update_cash_balance(
 
 
 @tool
+@logged_tool
 def record_expense(
     amount: float,
     category: str,
@@ -301,6 +306,7 @@ def record_expense(
 
 
 @tool
+@logged_tool
 def update_credit_card_balance(
     card_name: str,
     new_balance: float
@@ -356,6 +362,7 @@ def update_credit_card_balance(
 
 
 @tool
+@logged_tool
 def recalculate_net_worth() -> str:
     """
     Recalculate total net worth after multiple updates.

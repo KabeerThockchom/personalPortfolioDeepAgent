@@ -25,6 +25,7 @@ from langchain_core.tools import tool
 
 from src.utils.api_cache import get_cache
 from src.utils.response_optimizer import optimize_tool_response
+from src.utils.tool_logger import logged_tool
 
 # Load environment variables FIRST
 load_dotenv()
@@ -177,6 +178,7 @@ def _make_api_call(endpoint: str, params: Optional[Dict[str, Any]] = None) -> Di
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=900)  # 15 minutes
 def search_stocks(query: str, region: str = "US") -> Dict:
     """
@@ -219,6 +221,7 @@ def search_stocks(query: str, region: str = "US") -> Dict:
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=300)  # 5 minutes for real-time quotes
 def get_stock_quote(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -256,6 +259,7 @@ def get_stock_quote(symbol: str, region: str = "US", lang: str = "en-US") -> Dic
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=300)
 def get_multiple_quotes(symbols: List[str], region: str = "US") -> Dict[str, Dict]:
     """
@@ -289,6 +293,7 @@ def get_multiple_quotes(symbols: List[str], region: str = "US") -> Dict[str, Dic
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=900)
 def get_stock_summary(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -321,6 +326,7 @@ def get_stock_summary(symbol: str, region: str = "US", lang: str = "en-US") -> D
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=300)
 def get_quote_type(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -357,6 +363,7 @@ def get_quote_type(symbol: str, region: str = "US", lang: str = "en-US") -> Dict
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=3600)  # 1 hour for historical data
 def get_stock_chart(
     symbol: str,
@@ -418,6 +425,7 @@ def get_stock_chart(
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=3600)
 def get_stock_timeseries(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -452,6 +460,7 @@ def get_stock_timeseries(symbol: str, region: str = "US", lang: str = "en-US") -
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)  # 24 hours
 def get_stock_statistics(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -489,6 +498,7 @@ def get_stock_statistics(symbol: str, region: str = "US", lang: str = "en-US") -
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_balance_sheet(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -526,6 +536,7 @@ def get_stock_balance_sheet(symbol: str, region: str = "US", lang: str = "en-US"
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_cashflow(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -563,6 +574,7 @@ def get_stock_cashflow(symbol: str, region: str = "US", lang: str = "en-US") -> 
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_financials(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -601,6 +613,7 @@ def get_stock_financials(symbol: str, region: str = "US", lang: str = "en-US") -
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_earnings(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -642,6 +655,7 @@ def get_stock_earnings(symbol: str, region: str = "US", lang: str = "en-US") -> 
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_profile(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -680,6 +694,7 @@ def get_stock_profile(symbol: str, region: str = "US", lang: str = "en-US") -> D
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_insights(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -713,6 +728,7 @@ def get_stock_insights(symbol: str, region: str = "US", lang: str = "en-US") -> 
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_recent_updates(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -747,6 +763,7 @@ def get_stock_recent_updates(symbol: str, region: str = "US", lang: str = "en-US
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_analysis(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -783,6 +800,7 @@ def get_stock_analysis(symbol: str, region: str = "US", lang: str = "en-US") -> 
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_recommendations(symbol: str) -> Dict:
     """
@@ -809,6 +827,7 @@ def get_stock_recommendations(symbol: str) -> Dict:
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_recommendation_trend(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -841,6 +860,7 @@ def get_recommendation_trend(symbol: str, region: str = "US", lang: str = "en-US
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_upgrades_downgrades(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -877,6 +897,7 @@ def get_upgrades_downgrades(symbol: str, region: str = "US", lang: str = "en-US"
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_stock_holders(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -909,6 +930,7 @@ def get_stock_holders(symbol: str, region: str = "US", lang: str = "en-US") -> D
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_major_holders(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -941,6 +963,7 @@ def get_major_holders(symbol: str, region: str = "US", lang: str = "en-US") -> D
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_insider_transactions(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -974,6 +997,7 @@ def get_insider_transactions(symbol: str, region: str = "US", lang: str = "en-US
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_insider_roster(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1008,6 +1032,7 @@ def get_insider_roster(symbol: str, region: str = "US", lang: str = "en-US") -> 
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_esg_scores(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1043,6 +1068,7 @@ def get_esg_scores(symbol: str, region: str = "US", lang: str = "en-US") -> Dict
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_esg_chart(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1075,6 +1101,7 @@ def get_esg_chart(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_esg_peer_scores(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1111,6 +1138,7 @@ def get_esg_peer_scores(symbol: str, region: str = "US", lang: str = "en-US") ->
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=900)
 def get_stock_options(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1148,6 +1176,7 @@ def get_stock_options(symbol: str, region: str = "US", lang: str = "en-US") -> D
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=900)
 def get_futures_chain(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1182,6 +1211,7 @@ def get_futures_chain(symbol: str, region: str = "US", lang: str = "en-US") -> D
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_fund_profile(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1219,6 +1249,7 @@ def get_fund_profile(symbol: str, region: str = "US", lang: str = "en-US") -> Di
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_top_holdings(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1255,6 +1286,7 @@ def get_top_holdings(symbol: str, region: str = "US", lang: str = "en-US") -> Di
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=900)
 def get_news_list(
     symbol: Optional[str] = None,
@@ -1299,6 +1331,7 @@ def get_news_list(
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=3600)
 def get_news_article(uuid: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1332,6 +1365,7 @@ def get_news_article(uuid: str, region: str = "US", lang: str = "en-US") -> Dict
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_sec_filings(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1366,6 +1400,7 @@ def get_sec_filings(symbol: str, region: str = "US", lang: str = "en-US") -> Dic
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_similar_stocks(symbol: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1398,6 +1433,7 @@ def get_similar_stocks(symbol: str, region: str = "US", lang: str = "en-US") -> 
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=86400)
 def get_screeners_list(region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1428,6 +1464,7 @@ def get_screeners_list(region: str = "US", lang: str = "en-US") -> Dict:
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=3600)
 def get_saved_screeners(slug: str, count: int = 10, start: int = 0) -> Dict:
     """
@@ -1462,6 +1499,7 @@ def get_saved_screeners(slug: str, count: int = 10, start: int = 0) -> Dict:
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=3600)
 def get_calendar_events(
     entityIdType: str,
@@ -1515,6 +1553,7 @@ def get_calendar_events(
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=3600)
 def count_calendar_events(entityIdType: str, region: str = "US", lang: str = "en-US") -> Dict:
     """
@@ -1550,6 +1589,7 @@ def count_calendar_events(entityIdType: str, region: str = "US", lang: str = "en
 # ============================================================================
 
 @tool
+@logged_tool
 @cache.cached(ttl=900)
 def get_conversations_list(postId: str, offset: int = 0, sort_by: str = "newest", count: int = 10) -> Dict:
     """
@@ -1582,6 +1622,7 @@ def get_conversations_list(postId: str, offset: int = 0, sort_by: str = "newest"
 
 
 @tool
+@logged_tool
 @cache.cached(ttl=900)
 def count_conversations(postId: str) -> Dict:
     """

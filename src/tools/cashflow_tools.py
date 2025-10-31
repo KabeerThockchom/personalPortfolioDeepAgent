@@ -1,3 +1,5 @@
+from src.utils.tool_logger import logged_tool
+
 """Cash flow analysis calculation tools."""
 
 from langchain_core.tools import tool
@@ -5,6 +7,7 @@ from typing import Dict, List
 
 
 @tool
+@logged_tool
 def analyze_monthly_cashflow(income: Dict, expenses: Dict) -> Dict:
     """
     Analyze monthly cash flow from income and expenses.
@@ -43,6 +46,7 @@ def analyze_monthly_cashflow(income: Dict, expenses: Dict) -> Dict:
 
 
 @tool
+@logged_tool
 def calculate_savings_rate(income: Dict, taxes: Dict, expenses: Dict) -> Dict:
     """
     Calculate savings rate from income, taxes, and expenses.
@@ -98,6 +102,7 @@ def calculate_savings_rate(income: Dict, taxes: Dict, expenses: Dict) -> Dict:
 
 
 @tool
+@logged_tool
 def categorize_expenses(expenses: Dict) -> Dict:
     """
     Categorize and break down expenses by major categories.
@@ -138,6 +143,7 @@ def categorize_expenses(expenses: Dict) -> Dict:
 
 
 @tool
+@logged_tool
 def project_future_cashflow(
     net_monthly_cashflow: float,
     months: int,
@@ -179,6 +185,7 @@ def project_future_cashflow(
 
 
 @tool
+@logged_tool
 def calculate_burn_rate(expenses: Dict, liquid_assets: float) -> Dict:
     """
     Calculate burn rate and runway (months of expenses covered).
@@ -212,6 +219,7 @@ def calculate_burn_rate(expenses: Dict, liquid_assets: float) -> Dict:
 
 
 @tool
+@logged_tool
 def generate_waterfall_chart(income: float, expenses: float) -> Dict:
     """
     Generate waterfall chart data showing income to net cashflow.
