@@ -140,13 +140,63 @@ You: What's the latest news on NVDA?
     [Returns recent NVIDIA news from Bloomberg, WSJ, Reuters]
 ```
 
-### 4. (Optional) Run the Web Interface 🌐
+### 4. (Optional) Deep Agents UI - Next.js Web Interface 🌐 ⭐ NEW
 
-For a beautiful web UI with real-time tool visualization and subagent tracking:
+For the official **deep-agents-ui** with rich web interface:
+
+**Step 1: Start LangGraph Server**
+```bash
+# From project root
+./start_langgraph_server.sh
+
+# Or manually:
+langgraph dev
+```
+
+**Step 2: Clone and Set Up UI (first time only)**
+```bash
+# Clone UI (outside this project)
+cd ..
+git clone https://github.com/langchain-ai/deep-agents-ui.git
+cd deep-agents-ui
+
+# Install dependencies
+npm install
+
+# Configure environment
+cat > .env.local << EOF
+NEXT_PUBLIC_DEPLOYMENT_URL="http://127.0.0.1:2024"
+NEXT_PUBLIC_AGENT_ID="finance-agent"
+EOF
+```
+
+**Step 3: Start UI**
+```bash
+cd ../deep-agents-ui
+npm run dev
+```
+
+Visit **http://localhost:3000** for the official LangChain deep-agents-ui!
+
+**Features:**
+- 🌐 Modern Next.js interface
+- 💬 Real-time streaming chat
+- 🔧 Tool call visualization
+- 🤖 Subagent activity tracking
+- 🛡️ Human-in-the-loop approvals
+- 📊 LangSmith integration (production)
+
+**📖 Full Setup Guide:** See `DEEPAGENTS_UI_SETUP.md` for complete instructions
+
+---
+
+### 4b. (Alternative) Custom FastAPI Web Interface
+
+For the custom WebSocket-based interface:
 
 **Start Backend API:**
 ```bash
-# From project root (personal_finance_deep_agent)
+# From project root
 uvicorn api.server:app --reload --port 8000
 ```
 
@@ -157,9 +207,9 @@ npm install
 npm run dev
 ```
 
-Visit **http://localhost:5173** for the web interface!
+Visit **http://localhost:5173** for the custom web interface!
 
-**Web UI Features:**
+**Features:**
 - 💬 Real-time chat with streaming responses
 - 🔧 Tool call visualization with animated cards
 - 🤖 Live subagent activity tracking
@@ -787,16 +837,20 @@ personalPortfolioDeepAgent/
 │   │   ├── api_cache.py              # Yahoo Finance caching
 │   │   └── response_optimizer.py     # Large response handler
 │   ├── deep_agent.py                 # DeepAgents main agent
+│   ├── agent_graph.py                # Graph export for LangGraph server ⭐ NEW
 │   ├── subagents_config.py           # 8 subagent definitions
 │   ├── backends_config.py            # File storage backend
 │   ├── state.py                      # Shared state schema
 │   └── graph.py                      # LangGraph workflow (legacy)
 ├── tests/                            # Test files
-├── chat.py                           # 🎯 Main entry point (interactive chat)
+├── chat.py                           # 🎯 Main entry point (CLI chat)
+├── langgraph.json                    # LangGraph server config ⭐ NEW
+├── start_langgraph_server.sh         # Server startup script ⭐ NEW
 ├── kabeer_portfolio.json             # Example portfolio data
 ├── requirements.txt                  # Python dependencies
 ├── .env                              # API keys (not committed)
 ├── .env.example                      # Template for API keys
+├── DEEPAGENTS_UI_SETUP.md            # Deep Agents UI setup guide ⭐ NEW
 ├── .gitignore                        # Git ignore rules
 └── README.md                         # This file
 ```
@@ -810,6 +864,7 @@ personalPortfolioDeepAgent/
 **Dependencies:**
 ```
 langgraph              # Workflow orchestration
+langgraph-cli          # LangGraph server for deep-agents-ui ⭐ NEW
 langchain              # LLM framework
 langchain-anthropic    # Claude integration
 deepagents             # Multi-agent framework
@@ -990,9 +1045,9 @@ Built with:
 - [x] Response optimization for large API calls
 
 ### 🚧 In Progress
+- [x] deep-agents-ui integration (LangGraph server) ⭐ NEW
 - [ ] Gradio web UI with visualizations
 - [ ] Real-time chart rendering (Plotly)
-- [ ] Tool call transparency dashboard
 
 ### 🔮 Future
 - [ ] Long-term memory with LangGraph Store
