@@ -2,9 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🆕 Recent Updates (2025-10-30)
+## 🆕 Recent Updates (2025-10-31)
 
-**Major enhancements added - see `RECENT_UPDATES.md` for full details:**
+**🎉 MCP Server Integration Added:**
+- ✅ **9 MCP Servers** - All 80+ tools now exposed as Model Context Protocol servers
+- ✅ **Standardized Protocol** - Tools accessible from any MCP-compatible client
+- ✅ **Easy Integration** - Helper module (`src/mcp_tools_loader.py`) for seamless tool loading
+- ✅ **Full Documentation** - Comprehensive README in `mcp_servers/` with examples
+- ✅ **Language Agnostic** - MCP servers work with Python, JavaScript, and other MCP clients
+
+**Previous Updates (2025-10-30):**
 - ✅ **Date/Time Awareness** - All 9 agents now know current date/time
 - ✅ **Store Infrastructure** - Foundation for long-term memory (InMemoryStore integrated)
 - ✅ **Enhanced Display** - Full tool inputs/outputs with smart formatting in chat
@@ -56,6 +63,53 @@ pytest tests/test_portfolio_tools.py
 # Verbose output
 pytest -v
 ```
+
+## MCP (Model Context Protocol) Integration
+
+### Overview
+
+All 80+ financial tools are now available as **Model Context Protocol (MCP) servers**, enabling standardized access from any MCP-compatible client (Claude Desktop, VSCode, custom applications, etc.).
+
+### MCP Servers
+
+9 servers exposing 80+ tools in `mcp_servers/`:
+
+| Server | File | Tools | Description |
+|--------|------|-------|-------------|
+| **Portfolio** | `portfolio_server.py` | 6 | Valuation, allocation, concentration risk |
+| **Cashflow** | `cashflow_server.py` | 6 | Cash flow, savings rate, burn rate |
+| **Goal** | `goal_server.py` | 6 | Retirement, Monte Carlo, FIRE, college funding |
+| **Debt** | `debt_management_server.py` | 6 | Payoff strategies, DTI ratio |
+| **Tax** | `tax_optimization_server.py` | 5 | Loss harvesting, Roth conversions |
+| **Risk** | `risk_assessment_server.py` | 7 | Emergency fund, stress tests, VaR |
+| **Market** | `market_data_server.py` | 40+ | Yahoo Finance real-time data |
+| **Search** | `web_search_server.py` | 3 | Tavily web search |
+| **Portfolio Updates** | `portfolio_updates_server.py` | 5 | Persist portfolio changes |
+
+### Quick Start with MCP
+
+```python
+# Load all MCP tools
+from src.mcp_tools_loader import get_all_mcp_tools_sync
+tools = get_all_mcp_tools_sync()
+
+# Load specific categories
+from src.mcp_tools_loader import get_mcp_tools_by_category_sync
+tools = get_mcp_tools_by_category_sync(['portfolio', 'market'])
+
+# Use with LangChain agent
+from langchain.agents import create_agent
+agent = create_agent("anthropic:claude-sonnet-4-5", tools)
+```
+
+### Benefits
+
+- **Standardization**: MCP protocol enables any MCP client to use these tools
+- **Language Agnostic**: Clients in Python, JavaScript, etc.
+- **Modularity**: Each server can be started/stopped independently
+- **Remote Deployment**: Easy to deploy remotely with HTTP transport
+
+See `mcp_servers/README.md` for complete documentation, examples, and integration guides.
 
 ## Architecture
 

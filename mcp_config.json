@@ -1,0 +1,58 @@
+{
+  "mcpServers": {
+    "portfolio": {
+      "command": "python3",
+      "args": ["mcp_servers/portfolio_server.py"],
+      "transport": "stdio",
+      "description": "Portfolio analysis and valuation tools"
+    },
+    "cashflow": {
+      "command": "python3",
+      "args": ["mcp_servers/cashflow_server.py"],
+      "transport": "stdio",
+      "description": "Cash flow analysis and savings rate calculations"
+    },
+    "goal": {
+      "command": "python3",
+      "args": ["mcp_servers/goal_server.py"],
+      "transport": "stdio",
+      "description": "Goal planning, retirement calculations, and Monte Carlo simulations"
+    },
+    "debt": {
+      "command": "python3",
+      "args": ["mcp_servers/debt_management_server.py"],
+      "transport": "stdio",
+      "description": "Debt management, payoff strategies, and DTI calculations"
+    },
+    "tax": {
+      "command": "python3",
+      "args": ["mcp_servers/tax_optimization_server.py"],
+      "transport": "stdio",
+      "description": "Tax optimization, loss harvesting, and Roth conversions"
+    },
+    "risk": {
+      "command": "python3",
+      "args": ["mcp_servers/risk_assessment_server.py"],
+      "transport": "stdio",
+      "description": "Risk assessment, emergency fund analysis, and stress testing"
+    },
+    "market": {
+      "command": "python3",
+      "args": ["mcp_servers/market_data_server.py"],
+      "transport": "stdio",
+      "description": "Real-time market data from Yahoo Finance API"
+    },
+    "search": {
+      "command": "python3",
+      "args": ["mcp_servers/web_search_server.py"],
+      "transport": "stdio",
+      "description": "Web search via Tavily API for current news and information"
+    },
+    "portfolio_updates": {
+      "command": "python3",
+      "args": ["mcp_servers/portfolio_updates_server.py"],
+      "transport": "stdio",
+      "description": "Portfolio persistence - update holdings, cash, expenses, and net worth"
+    }
+  }
+}
