@@ -1,16 +1,46 @@
 # Personal Finance Deep Agent 🤖💰
 
-A production-ready multi-agent financial analysis system powered by **DeepAgents**, **LangGraph**, and **Claude 4.5 Haiku**. Features real-time market data, web search capabilities, intelligent portfolio management, and **complete execution visibility** with 74+ specialized financial tools across 8 expert subagents.
+A production-ready multi-agent financial analysis system powered by **DeepAgents**, **LangGraph**, and **Z.ai GLM-4.6**. Features real-time market data, web search capabilities, intelligent portfolio management, and **complete execution visibility** with 74+ specialized financial tools across 8 expert subagents.
 
-## 🆕 Recent Updates (2025-10-30)
+## 🆕 Recent Updates (2025-10-31)
 
-**Major enhancements added - see `RECENT_UPDATES.md` for full details:**
+**🚀 NEW: Ultra-Rich Terminal Output (Just Added!)**
+- ✅ **Smart JSON Parsing** - Converts raw JSON to beautiful bullet-point format (NEW!)
+  - Stock quotes: Price, change %, volume, market cap with color coding
+  - Financial metrics: Auto-formatted numbers ($1.5B, $234.5M)
+  - All tool results shown in full (no more "✓ SUCCESS" without data)
+- ✅ **Full Data Display** - Increased limits from 500→10000 chars, 10→100 lines
+  - Tool arguments: 300→5000 char display
+  - Proper text wrapping with textwrap module (no more broken words)
+  - Shows first 20 list items (was 5), 30 summary lines (was 10)
+- ✅ **Enhanced Visual Elements** - Rich icons and colors throughout
+  - Icons: 📊 stock data, 💰 metrics, 📋 summaries, 💾 saved files, 📦 data, ℹ️ info
+  - Colors: Green for gains, red for losses, cyan for info, blue for data
+- ✅ **Debug Output Removed** - Clean production display without technical noise
+
+**🚀 Token Optimization & Custom Model Backend:**
+- ✅ **99.5% Token Reduction** - Optimized tool responses from 26K → 138 tokens per call
+  - Deep analysis now uses ~150K tokens instead of 2.8M tokens
+  - Removed full JSON payloads, extracted key metrics only
+  - Smart summaries: "META - Price: $666.47 (-85.20, -0.11%), Vol: 87.34M, MCap: $1.68T"
+- ✅ **Z.ai GLM-4.6 Model** - Switched from OpenAI to Z.ai's GLM-4.6 for all agents
+- ✅ **Subagent Model Inheritance Fix** - Fixed `'NoneType' has no attribute 'bind_tools'` error
+- ✅ **Async Execution** - Fully asynchronous with `asyncio` for 3-5x faster parallel operations
+- ✅ **CompositeBackend** - Intelligent routing to different storage backends
+- ✅ **StateBackend** - Ephemeral files in LangGraph state (fast, auto-cleanup)
+- ✅ **StoreBackend** - Persistent cross-session memory (user preferences, analysis history)
+- ✅ **FilesystemBackend** - Real disk files with security hardening (reports, data)
+- ✅ **FilesystemMiddleware** - Auto-eviction of large tool results (60-80% context savings)
+- ✅ **Security** - Path traversal protection, O_NOFOLLOW, sandboxing
+- ✅ **Performance** - Ripgrep integration for 10-100x faster file search
+
+**Major enhancements from 2025-10-30:**
 - ✅ **Date/Time Awareness** - All agents now know current date/time for accurate calculations
 - ✅ **Store Infrastructure** - LangGraph Store integrated for future cross-session memory
-- ✅ **Enhanced Display** - Full tool inputs/outputs with smart formatting in terminal
 - ✅ **Tool Logging** - Subagent tool calls now visible in real-time (even in "black box" subagents)
 - ✅ **Friendly Node Names** - Clear agent labels ("🤖 Main Agent") and context details
-- ✅ **Hybrid Agent Architecture** - Main agent has 6 quick-access tools for instant responses (NEW!)
+- ✅ **Hybrid Agent Architecture** - Main agent has 6 quick-access tools for instant responses
+- ✅ **Human-in-the-Loop Approvals** - Agent asks permission before sensitive operations
 - ✅ **Code Cleanup** - Removed legacy routing code for cleaner architecture
 
 **Hybrid Architecture = Best of Both Worlds:**
@@ -39,10 +69,16 @@ A production-ready multi-agent financial analysis system powered by **DeepAgents
 ⚡ **Smart API Caching** - 15-minute TTL, response optimization, rate limiting
 
 ### User Experience
-💬 **Interactive Chat** - Natural language with streaming execution and colored output
-👁️ **Complete Visibility** - See every tool call with inputs/outputs (even from subagents!)
+💬 **Interactive Chat** - Natural language with streaming execution and rich colored output
+👁️ **Complete Visibility** - See every tool call with full inputs/outputs (even from subagents!)
+🎨 **Ultra-Rich Display** - Smart JSON parsing with bullet points, icons, and color coding
+  - Stock quotes with price changes (green ↑ / red ↓)
+  - Auto-formatted financial metrics ($1.5B, $234.5M)
+  - Full data display (10K chars, 100 lines, no truncation)
+  - Proper text wrapping (no broken words)
 🏷️ **Friendly Node Names** - Clear agent labels ("🤖 Main Agent") and middleware context
 📅 **Time-Aware** - All agents know current date/time for accurate calculations
+🛡️ **Human-in-the-Loop Approvals** - Agent asks permission before sensitive operations (portfolio changes, subagent spawning)
 
 ### Advanced Features
 🎯 **Monte Carlo Simulations** - Probabilistic retirement projections with 10,000 scenarios
@@ -75,7 +111,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Add your API keys to .env:
-# - ANTHROPIC_API_KEY (required - get from https://console.anthropic.com)
+# - Z.ai API credentials are hardcoded in src/deep_agent.py and src/subagents_config.py
 # - RAPIDAPI_KEY (required - get from https://rapidapi.com/sparior/api/yahoo-finance15)
 # - TAVILY_API_KEY (optional - defaults to dev key, get from https://tavily.com)
 ```
@@ -142,7 +178,7 @@ The system uses **DeepAgents** framework with a supervisor pattern. The main age
 ```
                     ┌─────────────────────┐
                     │   Main Deep Agent   │
-                    │   (Claude 4.5 Haiku)   │
+                    │   (Z.ai GLM-4.6)    │
                     └──────────┬──────────┘
                                │
         ┌──────────────────────┼──────────────────────┐
@@ -457,6 +493,110 @@ Agent: ✅ Net worth recalculated:
 
 ---
 
+## 🛡️ Human-in-the-Loop Approvals ⭐ NEW
+
+The agent now **asks for your permission** before executing sensitive operations. This prevents accidental portfolio changes and gives you control over complex tasks.
+
+### What Requires Approval?
+
+**Tier 1 - Portfolio Modifications** (always require approval):
+- `update_investment_holding` - Buy/sell stocks
+- `update_cash_balance` - Deposits/withdrawals
+- `record_expense` - Track spending
+- `update_credit_card_balance` - Update credit cards
+- `recalculate_net_worth` - Recalculate totals
+
+**Tier 2 - Complex Planning** (requires approval):
+- `task` - Spawning subagents for complex analysis
+
+### How It Works
+
+1. Agent detects a sensitive operation
+2. Execution pauses automatically
+3. You see tool name + arguments
+4. You decide: **approve** or **reject**
+5. Agent continues with your decision
+
+### Example: Portfolio Trade Approval
+```
+You: Buy 10 shares of NVDA in my 401k
+
+Agent: I'll update your investment holding.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛑 Agent Paused - Approval Required
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  APPROVAL REQUIRED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tool: update_investment_holding
+Arguments:
+  account_name: 401k
+  ticker: NVDA
+  shares: 10
+  transaction_type: buy
+  price_per_share: None (will fetch current price)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Approve? ([y]es/[n]o): y
+✓ Approved
+
+🔄 Resuming agent execution...
+✓ Purchased 10 shares of NVDA at $147.63
+  💾 401(k) total: $25,348.39
+  📁 Portfolio saved to disk
+```
+
+### Example: Subagent Approval
+```
+You: Do a deep dive analysis on META stock
+
+Agent: I'll spawn subagents to analyze META comprehensively.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛑 Agent Paused - Approval Required
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Request 1 of 2:
+⚠️  APPROVAL REQUIRED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tool: task
+Arguments:
+  agent_name: research-analyst
+  task_description: Get comprehensive research data on META including analyst ratings, insider trades, and ESG scores
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Approve? ([y]es/[n]o): y
+✓ Approved
+
+Request 2 of 2:
+⚠️  APPROVAL REQUIRED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tool: task
+Arguments:
+  agent_name: market-data-fetcher
+  task_description: Fetch current price, fundamentals, and historical performance for META
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Approve? ([y]es/[n]o): y
+✓ Approved
+
+🔄 Resuming agent execution...
+🚀 Spawning research-analyst subagent...
+🚀 Spawning market-data-fetcher subagent...
+[Full analysis continues...]
+```
+
+### Technical Implementation
+
+Uses **LangGraph's native interrupt capabilities** with checkpointing:
+- `MemorySaver` checkpointer tracks conversation state
+- Thread ID enables pause/resume across turns
+- Interrupt detection: `node_name == "__interrupt__"`
+- Interrupts come as tuples: `(Interrupt(...),)`
+- Each interrupt has `.value` with `action_requests` and `review_configs`
+
+See `CLAUDE.md` for detailed implementation notes.
+
+---
+
 ## 📊 Example Use Cases
 
 ### 1. Portfolio Analysis with Real Prices
@@ -681,7 +821,7 @@ certifi                # SSL certificates
 ```
 
 **API Keys:**
-- **Anthropic API** (required) - Claude 4.5 4.5 Haiku for agents
+- **Z.ai API** (hardcoded in config) - GLM-4.6 model for all agents
 - **RapidAPI** (required) - Yahoo Finance Real-Time API
 - **Tavily API** (optional) - Web search (defaults to dev key)
 
@@ -692,8 +832,11 @@ certifi                # SSL certificates
 Create `.env` file with your API keys:
 
 ```bash
-# Required: Claude AI for agents
-ANTHROPIC_API_KEY=sk-ant-api03-xxxxx
+# Z.ai API credentials are hardcoded in:
+# - src/deep_agent.py (main agent)
+# - src/subagents_config.py (all subagents)
+# Model: glm-4.6
+# API Base: https://api.z.ai/api/paas/v4/
 
 # Required: Yahoo Finance Real-Time API
 RAPIDAPI_KEY=xxxxx
@@ -703,7 +846,7 @@ TAVILY_API_KEY=tvly-xxxxx
 ```
 
 **Get API Keys:**
-- Anthropic: https://console.anthropic.com
+- Z.ai: https://api.z.ai (credentials already configured in code)
 - RapidAPI (Yahoo Finance): https://rapidapi.com/sparior/api/yahoo-finance15
 - Tavily: https://tavily.com
 
@@ -820,7 +963,7 @@ MIT License - see LICENSE file for details
 Built with:
 - **[DeepAgents](https://github.com/anthropics/deepagents)** by Anthropic - Multi-agent framework
 - **[LangGraph](https://github.com/langchain-ai/langgraph)** - Workflow orchestration
-- **[Claude 4.5 4.5 Haiku](https://www.anthropic.com/claude)** - AI reasoning
+- **[Z.ai GLM-4.6](https://api.z.ai)** - AI reasoning (custom OpenAI-compatible API for all agents)
 - **[Yahoo Finance API](https://rapidapi.com/sparior/api/yahoo-finance15)** - Market data
 - **[Tavily](https://tavily.com)** - Web search API
 
@@ -860,4 +1003,4 @@ Built with:
 
 ---
 
-**Made with ❤️ and Claude 4.5 4.5 Haiku**
+**Made with ❤️ and Z.ai GLM-4.6**

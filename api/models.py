@@ -88,6 +88,18 @@ class ErrorEvent(AgentEvent):
     details: Optional[str] = None
 
 
+class ApprovalRequestEvent(AgentEvent):
+    """Agent is requesting approval for tool execution."""
+    type: Literal["approval_request"] = "approval_request"
+    action_requests: List[Dict[str, Any]]  # List of pending tool calls requiring approval
+
+
+class ApprovalResponse(BaseModel):
+    """User's approval decisions for interrupted tools."""
+    session_id: str
+    decisions: List[Dict[str, Any]]  # List of {"type": "approve"} or {"type": "reject"} or {"type": "edit", "edited_action": {...}}
+
+
 class PortfolioResponse(BaseModel):
     """Portfolio data response."""
     success: bool

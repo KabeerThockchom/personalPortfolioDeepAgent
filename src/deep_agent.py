@@ -1,13 +1,18 @@
 """Main deep agent for personal finance analysis using DeepAgents."""
 
-import os
 from datetime import datetime
 from dotenv import load_dotenv
 from deepagents import create_deep_agent
-from langchain_anthropic import ChatAnthropic
 from langgraph.store.memory import InMemoryStore
+from langgraph.checkpoint.memory import MemorySaver
+from langchain.chat_models import init_chat_model
 
-from .backends_config import get_default_backend
+from .backends import (
+    CompositeBackend,
+    StateBackend,
+    StoreBackend,
+    FilesystemBackend,
+)
 from .subagents_config import FINANCIAL_SUBAGENTS, format_subagents_with_datetime
 
 # Import most common tools for main agent quick access
@@ -15,6 +20,9 @@ from .tools.market_data_tools import get_stock_quote, get_multiple_quotes
 from .tools.portfolio_tools import calculate_portfolio_value
 from .tools.cashflow_tools import analyze_monthly_cashflow, calculate_savings_rate
 from .tools.search_tools import web_search
+
+# Portfolio update tools are configured in INTERRUPT_ON_CONFIG but don't need to be imported here
+# They're automatically available to the agent through the tools list in subagents_config.py
 
 # Load environment variables
 load_dotenv()
@@ -36,6 +44,24 @@ MAIN_AGENT_QUICK_TOOLS = [
     # Web search (quick news/research lookup)
     web_search,
 ]
+
+
+# Human-in-the-loop interrupt configuration
+# Tools that require approval before execution
+INTERRUPT_ON_CONFIG = {
+    # Tier 1: ALWAYS require approval (portfolio modifications)
+    "update_investment_holding": True,     # Buy/sell stocks
+    "update_cash_balance": True,            # Deposits/withdrawals
+    "record_expense": True,                 # Record spending
+    "update_credit_card_balance": True,     # Update credit card
+    "recalculate_net_worth": True,          # Recalculate totals
+
+    # Tier 2: Complex planning (task delegation to subagents)
+    "task": True,  # Pause before spawning subagents for complex work
+
+    # Tier 3: Auto-approve (read-only operations)
+    # All other tools are auto-approved (no entry needed)
+}
 
 
 # Main agent system prompt
@@ -133,6 +159,13 @@ You have access to a virtual filesystem for organizing your work:
 2. Load current data: `read_file("/financial_data/user_portfolio.json")`
 3. Work in scratch: `write_file("/working/portfolio_analysis.txt", content)`
 4. Save final report: `write_file("/reports/financial_review_{current_datetime}.md", report)`
+
+**IMPORTANT - write_file() usage:**
+- `write_file(file_path, content)` requires TWO arguments: file_path AND content
+- ❌ WRONG: `write_file("/reports/analysis.md")` - missing content!
+- ✅ CORRECT: `write_file("/reports/analysis.md", "# Analysis\n\nFull report content here...")`
+- Always construct the complete file content as a string before calling write_file
+- Never call write_file without the content argument - it will fail with "Field required" error
 
 **Note:** Files persist within the current conversation thread. For cross-session persistence,
 the actual portfolio.json file at the project root is updated by portfolio_update_tools.py.
@@ -256,6 +289,7 @@ User: [name]
 6. **Be specific** - Provide exact numbers, not ranges
 7. **Prioritize actions** - List recommendations by importance
 8. **Save work** - Write important findings to persistent directories
+9. **write_file requires content** - Always call write_file(path, content) with BOTH arguments. Construct the full content string first before calling.
 
 ## Example Interactions
 
@@ -323,34 +357,87 @@ Response: "Comparing the three tech giants: NVDA leads in growth (P/E: 65), AAPL
 
 Remember: You're the orchestrator. Plan clearly, delegate appropriately, synthesize insights, and provide actionable recommendations."""
 
+from langchain_openai import ChatOpenAI
+model = ChatOpenAI(
+    temperature=0,
+    model="glm-4.6",
+    openai_api_key="69feab44626640cfb0d841966bc344a1.szw2ZTaSJ1KwvjS8",
+    openai_api_base="https://api.z.ai/api/paas/v4/"
+)
 
 def create_finance_deep_agent(
-    model="claude-haiku-4-5",
+    # model="openai:gpt-5-mini",
+    model=model,
     store=None,
     additional_tools=None,
     temperature=0,
+    enable_human_in_loop=True,
+    session_id=None,
 ):
     """
     Create a personal finance deep agent with specialized subagents.
 
     Args:
-        model: Model to use (default: claude-haiku-4-5)
+        model: Model to use. Can be:
+               - String model name (e.g., "openai:gpt-5-mini")
+               - init_chat_model result (e.g., init_chat_model(model="openai:gpt-5-mini"))
+               - ChatModel instance
         store: LangGraph BaseStore for persistent storage (optional, defaults to InMemoryStore)
         additional_tools: Extra tools beyond subagents (optional)
         temperature: Model temperature (default: 0 for deterministic)
+        enable_human_in_loop: Enable interrupts for sensitive operations (default: True)
+        session_id: Unique session ID for local file storage (optional, generates one if not provided)
 
     Returns:
-        Compiled LangGraph agent with long-term memory support
+        Compiled LangGraph agent with long-term memory and HITL support
     """
-    # Create LLM
-    llm = ChatAnthropic(model=model, temperature=temperature)
+    # Create LLM - handle both string and ChatModel instance
+    if isinstance(model, str):
+        # String model name - use init_chat_model for cross-provider support
+        llm = init_chat_model(model=model, temperature=temperature)
+    else:
+        # Already a ChatModel instance (from init_chat_model or direct instantiation)
+        llm = model
 
-    # Get backend
-    backend = get_default_backend()
+    # Generate session_id if not provided
+    if session_id is None:
+        import uuid
+        session_id = str(uuid.uuid4())
 
     # Create store if not provided (default to in-memory)
     if store is None:
         store = InMemoryStore()
+
+    # NEW: Hybrid backend architecture with CompositeBackend
+    # Routes different paths to different storage backends:
+    # - /working/, /temp/, /cache/ → StateBackend (ephemeral, within thread)
+    # - /memories/, /user_profiles/, /analysis_history/ → StoreBackend (persistent, cross-session)
+    # - /reports/, /financial_data/ → FilesystemBackend (real disk files in sessions/{session_id}/)
+
+    # Create base directory for this session
+    import os
+    from pathlib import Path
+    session_dir = Path("sessions") / session_id
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    # Lambda factories for backends (receive runtime at execution time)
+    def create_backend(runtime):
+        return CompositeBackend(
+            default=StateBackend(runtime),  # Default: ephemeral files in LangGraph state
+            routes={
+                "/memories/": StoreBackend(runtime),      # Persistent across sessions
+                "/user_profiles/": StoreBackend(runtime), # Persistent user data
+                "/analysis_history/": StoreBackend(runtime),  # Persistent analysis history
+                "/reports/": FilesystemBackend(root_dir=session_dir / "reports", virtual_mode=True),
+                "/financial_data/": FilesystemBackend(root_dir=session_dir / "financial_data", virtual_mode=True),
+            }
+        )
+
+    backend = create_backend  # Pass factory function, not instance
+
+    # Create checkpointer for human-in-the-loop functionality
+    # This is REQUIRED for interrupts to work
+    checkpointer = MemorySaver()
 
     # Get current datetime for system prompt
     current_datetime = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
@@ -371,7 +458,10 @@ def create_finance_deep_agent(
     if additional_tools:
         tools.extend(additional_tools)
 
-    # Create deep agent with long-term memory (enabled automatically via store)
+    # Determine interrupt configuration
+    interrupt_on = INTERRUPT_ON_CONFIG if enable_human_in_loop else {}
+
+    # Create deep agent with long-term memory and human-in-the-loop
     agent = create_deep_agent(
         model=llm,
         tools=tools,  # Main agent now has quick-access tools + any additional
@@ -379,6 +469,8 @@ def create_finance_deep_agent(
         system_prompt=formatted_system_prompt,
         backend=backend,
         store=store,  # Long-term memory enabled by providing a Store
+        checkpointer=checkpointer,  # Required for human-in-the-loop
+        interrupt_on=interrupt_on,  # Tools requiring approval before execution
     )
 
     return agent

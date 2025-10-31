@@ -1,7 +1,49 @@
 """Subagent definitions for financial analysis deep agent."""
 
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+
+
+# ============================================================================
+# SUBAGENT MODEL CONFIGURATION
+# ============================================================================
+# Configure which model each subagent uses.
+# Format: "provider:model-name" or ChatOpenAI instance or None to use main agent's model
+#
+# Examples:
+# - "anthropic:claude-sonnet-4-20250514" (Claude Sonnet 4)
+# - "anthropic:claude-haiku-4-20250514" (Claude Haiku 4)
+# - "openai:gpt-4o" (GPT-4o)
+# - "openai:gpt-4o-mini" (GPT-4o mini)
+# - ChatOpenAI instance (custom model configuration)
+# - None (use main agent's model)
+# ============================================================================
+
+# NOTE: All subagents set to None to inherit from main agent
+# This avoids parameter compatibility issues with Z.ai API
+# The main agent is configured with Z.ai GLM-4.6 in src/deep_agent.py
+SUBAGENT_MODELS = {
+    "market-data-fetcher": None,  # Inherits from main agent (Z.ai GLM-4.6)
+    "research-analyst": None,
+    "portfolio-analyzer": None,
+    "cashflow-analyzer": None,
+    "goal-planner": None,
+    "debt-manager": None,
+    "tax-optimizer": None,
+    "risk-assessor": None,
+}
+
+# Alternative: Set all subagents to a specific model
+# SUBAGENT_MODELS = {
+#     "market-data-fetcher": "anthropic:claude-haiku-4-20250514",
+#     "research-analyst": "openai:gpt-4o",  # Better for research tasks
+#     "portfolio-analyzer": "anthropic:claude-sonnet-4-20250514",  # Complex analysis
+#     "cashflow-analyzer": "anthropic:claude-haiku-4-20250514",
+#     "goal-planner": "anthropic:claude-sonnet-4-20250514",  # Monte Carlo needs reasoning
+#     "debt-manager": "anthropic:claude-haiku-4-20250514",
+#     "tax-optimizer": "openai:gpt-4o-mini",
+#     "risk-assessor": "anthropic:claude-haiku-4-20250514",
+# }
 
 from src.tools.portfolio_tools import (
     calculate_portfolio_value,
@@ -122,10 +164,26 @@ from src.tools.portfolio_update_tools import (
 )
 
 
+# Helper function to build subagent dict with optional model
+def _build_subagent(name, description, system_prompt, tools):
+    """Build subagent dict, only including 'model' key if value is not None."""
+    subagent = {
+        "name": name,
+        "description": description,
+        "system_prompt": system_prompt,
+        "tools": tools,
+    }
+    # Only add model key if it's not None (allows proper inheritance from main agent)
+    model = SUBAGENT_MODELS.get(name)
+    if model is not None:
+        subagent["model"] = model
+    return subagent
+
+
 # Market Data Fetcher Subagent
-MARKET_DATA_SUBAGENT = {
-    "name": "market-data-fetcher",
-    "description": """Use this agent to fetch real-time market data from Yahoo Finance, including:
+MARKET_DATA_SUBAGENT = _build_subagent(
+    name="market-data-fetcher",
+    description="""Use this agent to fetch real-time market data from Yahoo Finance, including:
     - Current stock quotes and prices for single or multiple securities
     - Historical price data and charts (daily, weekly, monthly intervals)
     - Key statistics (P/E ratio, market cap, beta, dividend yield, etc.)
@@ -135,7 +193,7 @@ MARKET_DATA_SUBAGENT = {
 
     Use this agent FIRST when you need current market prices or fundamental data for any analysis.
     This replaces mock/placeholder data with real Yahoo Finance data.""",
-    "system_prompt": """You are a Market Data Specialist with direct access to real-time Yahoo Finance data.
+    system_prompt="""You are a Market Data Specialist with direct access to real-time Yahoo Finance data.
 
 Your responsibilities:
 1. Fetch current stock quotes when real-time prices are needed
@@ -165,7 +223,7 @@ Output format for portfolio quotes:
 }
 
 Always provide clean, structured data that other agents can immediately use.""",
-    "tools": [
+    tools=[
         search_stocks,
         get_stock_quote,
         get_multiple_quotes,
@@ -185,13 +243,13 @@ Always provide clean, structured data that other agents can immediately use.""",
         web_search_news,
         web_search_financial,
     ],
-}
+)
 
 
 # Research & Analysis Subagent
-RESEARCH_SUBAGENT = {
-    "name": "research-analyst",
-    "description": """Use this agent for deep research and analysis on companies/securities, including:
+RESEARCH_SUBAGENT = _build_subagent(
+    name="research-analyst",
+    description="""Use this agent for deep research and analysis on companies/securities, including:
     - Company profiles, business descriptions, and executive information
     - Analyst recommendations, price targets, and rating trends
     - Recent analyst upgrades and downgrades
@@ -204,7 +262,7 @@ RESEARCH_SUBAGENT = {
     - Upcoming events (earnings dates, dividend dates)
 
     Use this agent when you need qualitative insights, analyst opinions, or deep company research.""",
-    "system_prompt": """You are a Research Analyst specializing in company analysis and market intelligence.
+    system_prompt="""You are a Research Analyst specializing in company analysis and market intelligence.
 
 Your responsibilities:
 1. Provide comprehensive company profiles and business descriptions
@@ -234,7 +292,7 @@ Insight synthesis:
 - Summarize key takeaways in clear, actionable bullet points
 
 Save detailed research reports to /reports/ directory.""",
-    "tools": [
+    tools=[
         get_stock_profile,
         get_stock_insights,
         get_stock_recent_updates,
@@ -260,20 +318,20 @@ Save detailed research reports to /reports/ directory.""",
         web_search_news,
         web_search_financial,
     ],
-}
+)
 
 
 # Portfolio Analyzer Subagent
-PORTFOLIO_SUBAGENT = {
-    "name": "portfolio-analyzer",
-    "description": """Use this agent for investment portfolio analysis, including:
+PORTFOLIO_SUBAGENT = _build_subagent(
+    name="portfolio-analyzer",
+    description="""Use this agent for investment portfolio analysis, including:
     - Calculating portfolio value and returns
     - Analyzing asset allocation
     - Identifying concentration risks
     - Calculating performance metrics (Sharpe ratio, returns)
     - Recommending rebalancing strategies
     - Generating portfolio visualizations""",
-    "system_prompt": """You are a Portfolio Analysis Specialist focused on investment analysis.
+    system_prompt="""You are a Portfolio Analysis Specialist focused on investment analysis.
 
 Your responsibilities:
 1. Calculate total portfolio value and unrealized gains/losses
@@ -294,7 +352,7 @@ Best practices:
 - After updating holdings, recalculate net worth with recalculate_net_worth tool
 
 Be precise with numbers and provide clear rationale for recommendations.""",
-    "tools": [
+    tools=[
         # Portfolio calculation tools
         calculate_portfolio_value,
         calculate_asset_allocation,
@@ -315,20 +373,20 @@ Be precise with numbers and provide clear rationale for recommendations.""",
         web_search_news,
         web_search_financial,
     ],
-}
+)
 
 
 # Cash Flow Analyzer Subagent
-CASHFLOW_SUBAGENT = {
-    "name": "cashflow-analyzer",
-    "description": """Use this agent for income and expense analysis, including:
+CASHFLOW_SUBAGENT = _build_subagent(
+    name="cashflow-analyzer",
+    description="""Use this agent for income and expense analysis, including:
     - Analyzing monthly cash flow (income vs expenses)
     - Calculating savings rates
     - Categorizing and analyzing spending patterns
     - Projecting future cash flow
     - Assessing emergency fund runway
     - Generating cash flow visualizations""",
-    "system_prompt": """You are a Cash Flow Analysis Specialist focused on income, expenses, and savings.
+    system_prompt="""You are a Cash Flow Analysis Specialist focused on income, expenses, and savings.
 
 Your responsibilities:
 1. Calculate net monthly cash flow (income - expenses)
@@ -351,7 +409,7 @@ Best practices:
 - After updates, recalculate net worth with recalculate_net_worth tool
 
 Provide specific insights on spending patterns and savings opportunities.""",
-    "tools": [
+    tools=[
         analyze_monthly_cashflow,
         calculate_savings_rate,
         categorize_expenses,
@@ -368,20 +426,20 @@ Provide specific insights on spending patterns and savings opportunities.""",
         web_search_news,
         web_search_financial,
     ],
-}
+)
 
 
 # Goal Planning Subagent
-GOAL_SUBAGENT = {
-    "name": "goal-planner",
-    "description": """Use this agent for financial goal planning and analysis, including:
+GOAL_SUBAGENT = _build_subagent(
+    name="goal-planner",
+    description="""Use this agent for financial goal planning and analysis, including:
     - Retirement readiness assessment
     - Monte Carlo simulations for goal projections
     - Required savings rate calculations
     - College funding (529 plan) analysis
     - FIRE (Financial Independence) number calculations
     - Goal progress tracking and recommendations""",
-    "system_prompt": """You are a Goal Planning Specialist focused on retirement and financial objectives.
+    system_prompt="""You are a Goal Planning Specialist focused on retirement and financial objectives.
 
 Your responsibilities:
 1. Assess retirement readiness and calculate gaps
@@ -400,7 +458,7 @@ Best practices:
 - Use percentiles (10th, 50th, 90th) to show range of outcomes
 
 Be realistic about requirements and provide clear action items.""",
-    "tools": [
+    tools=[
         # Goal planning tools
         calculate_retirement_gap,
         run_monte_carlo_simulation,
@@ -417,20 +475,20 @@ Be realistic about requirements and provide clear action items.""",
         web_search_news,
         web_search_financial,
     ],
-}
+)
 
 
 # Debt Management Subagent
-DEBT_SUBAGENT = {
-    "name": "debt-manager",
-    "description": """Use this agent for debt analysis and optimization, including:
+DEBT_SUBAGENT = _build_subagent(
+    name="debt-manager",
+    description="""Use this agent for debt analysis and optimization, including:
     - Calculating debt payoff timelines
     - Comparing avalanche vs snowball strategies
     - Optimizing extra payment allocation
     - Analyzing refinancing opportunities
     - Calculating debt-to-income ratios
     - Generating debt payoff visualizations""",
-    "system_prompt": """You are a Debt Management Specialist focused on debt optimization strategies.
+    system_prompt="""You are a Debt Management Specialist focused on debt optimization strategies.
 
 Your responsibilities:
 1. Calculate total debt payoff timeline with current payments
@@ -449,7 +507,7 @@ Best practices:
 - Prioritize high-interest debt (>7%) aggressively
 
 Provide specific monthly payment recommendations and expected payoff dates.""",
-    "tools": [
+    tools=[
         calculate_debt_payoff_timeline,
         compare_avalanche_vs_snowball,
         calculate_total_interest_cost,
@@ -461,20 +519,20 @@ Provide specific monthly payment recommendations and expected payoff dates.""",
         web_search_news,
         web_search_financial,
     ],
-}
+)
 
 
 # Tax Optimization Subagent
-TAX_SUBAGENT = {
-    "name": "tax-optimizer",
-    "description": """Use this agent for tax optimization strategies, including:
+TAX_SUBAGENT = _build_subagent(
+    name="tax-optimizer",
+    description="""Use this agent for tax optimization strategies, including:
     - Calculating effective tax rates
     - Identifying tax loss harvesting opportunities
     - Analyzing Roth conversion opportunities
     - Optimizing withdrawal sequences from different account types
     - Calculating capital gains tax implications
     - Recommending tax-efficient strategies""",
-    "system_prompt": """You are a Tax Optimization Specialist focused on tax-efficient strategies.
+    system_prompt="""You are a Tax Optimization Specialist focused on tax-efficient strategies.
 
 Your responsibilities:
 1. Calculate current effective tax rate
@@ -493,7 +551,7 @@ Best practices:
 - Estimate potential tax savings in dollars
 
 Provide specific, actionable tax strategies with estimated savings.""",
-    "tools": [
+    tools=[
         calculate_effective_tax_rate,
         identify_tax_loss_harvesting_opportunities,
         analyze_roth_conversion_opportunity,
@@ -504,20 +562,20 @@ Provide specific, actionable tax strategies with estimated savings.""",
         web_search_news,
         web_search_financial,
     ],
-}
+)
 
 
 # Risk Assessment Subagent
-RISK_SUBAGENT = {
-    "name": "risk-assessor",
-    "description": """Use this agent for financial risk assessment, including:
+RISK_SUBAGENT = _build_subagent(
+    name="risk-assessor",
+    description="""Use this agent for financial risk assessment, including:
     - Assessing emergency fund adequacy
     - Identifying insurance coverage gaps
     - Calculating portfolio volatility and risk metrics
     - Running stress test scenarios (market crashes)
     - Analyzing concentration risks
     - Generating risk dashboard visualizations""",
-    "system_prompt": """You are a Risk Assessment Specialist focused on identifying financial vulnerabilities.
+    system_prompt="""You are a Risk Assessment Specialist focused on identifying financial vulnerabilities.
 
 Your responsibilities:
 1. Assess emergency fund adequacy (target: 6 months expenses)
@@ -536,7 +594,7 @@ Best practices:
 - Prioritize risks by severity and likelihood
 
 Provide clear, prioritized recommendations for risk mitigation.""",
-    "tools": [
+    tools=[
         # Risk assessment tools
         calculate_emergency_fund_adequacy,
         analyze_insurance_gaps,
@@ -556,7 +614,7 @@ Provide clear, prioritized recommendations for risk mitigation.""",
         web_search_news,
         web_search_financial,
     ],
-}
+)
 
 
 # All subagents list

@@ -2,8 +2,10 @@
 Agent service for executing financial agent with streaming support.
 """
 import json
-from typing import Iterator, Dict, Any
+import time
+from typing import Iterator, Dict, Any, List
 from langchain_core.messages import HumanMessage
+from langgraph.types import Command
 
 from src.deep_agent import create_finance_deep_agent
 from api.event_parser import parse_stream_to_events
@@ -29,73 +31,98 @@ class AgentService:
     def stream_response(
         self,
         session: Session,
-        user_message: str
+        user_message: str = None,
+        is_resume: bool = False,
+        decisions: List[Dict] = None
     ) -> Iterator[AgentEvent]:
         """
         Stream agent response as events.
 
         Args:
             session: Chat session with conversation history
-            user_message: User's message
+            user_message: User's message (not used if is_resume=True)
+            is_resume: Whether this is resuming from an interrupt
+            decisions: User decisions for interrupted tools (if is_resume=True)
 
         Yields:
             AgentEvent objects
         """
-        # Add user message to session
-        session.add_message(HumanMessage(content=user_message))
+        if not is_resume:
+            # Add user message to session
+            session.add_message(HumanMessage(content=user_message))
 
-        # Prune conversation history (keep last 5 turns)
-        session.prune_history(max_turns=5)
+            # Prune conversation history (keep last 5 turns)
+            session.prune_history(max_turns=5)
 
-        # Get current state
-        state = session.get_state()
+        # Get current state and config
+        state = session.get_state() if not is_resume else Command(resume={"decisions": decisions or []})
+        config = session.get_config()
 
         try:
-            # Prefer event-level streaming when available to surface updates immediately
-            if hasattr(self.agent, "stream_events"):
-                # Some runtimes expose a low-level event stream API that yields dict events
-                events_iter = self.agent.stream_events(state, version="v1")
+            # Use state streaming with config for checkpointing support
+            stream = self.agent.stream(state, config=config, stream_mode="updates")
 
-                from api.event_parser import EventParser
-                parser = EventParser()
+            # Check for interrupts and parse stream into events
+            for chunk in stream:
+                # Check each state update for interrupts
+                for node_name, state_update in chunk.items():
+                    # Detect interrupts
+                    if state_update and "__interrupt__" in state_update:
+                        # Store interrupts in session
+                        interrupts = state_update["__interrupt__"]
+                        if isinstance(interrupts, list):
+                            session.pending_interrupts.extend(interrupts)
+                        else:
+                            session.pending_interrupts.append(interrupts)
 
-                for ev in events_iter:
-                    # Try to extract node/state update payloads as they arrive
-                    payload = None
-                    # Common shapes: {"delta": {node: {...}}} or {"update": {...}}
-                    if isinstance(ev, dict):
-                        payload = ev.get("delta") or ev.get("update") or ev.get("data") or ev
+                        # Yield approval request event
+                        from api.models import ApprovalRequestEvent
+                        yield ApprovalRequestEvent(
+                            action_requests=self._extract_action_requests(session.pending_interrupts),
+                            timestamp=time.time()
+                        )
+                        # Stop streaming - wait for user decisions
+                        return
 
-                    if payload is None:
-                        continue
-
-                    for parsed in parser.parse_chunk(payload):
-                        yield parsed
-
-                # Finalize to close any open subagents
-                for parsed in parser.finalize():
-                    yield parsed
-
-            else:
-                # Fallback to state streaming
-                stream = self.agent.stream(state, stream_mode="updates")
-
-                # Parse stream into events
-                for event in parse_stream_to_events(stream):
+                # Parse chunk into events as before
+                for event in parse_stream_to_events([chunk]):
                     yield event
-
-                # Update session with file changes if FileUpdateEvent
-                # (we'll handle this in the server layer)
 
         except Exception as e:
             # Yield error event
             from api.models import ErrorEvent
-            import time
             yield ErrorEvent(
                 error=str(e),
                 details="Error during agent execution",
                 timestamp=time.time()
             )
+
+    def _extract_action_requests(self, interrupts: List) -> List[Dict]:
+        """Extract action requests from interrupt objects."""
+        all_action_requests = []
+        for interrupt in interrupts:
+            if hasattr(interrupt, 'value') and isinstance(interrupt.value, dict):
+                interrupt_data = interrupt.value
+            elif isinstance(interrupt, dict):
+                interrupt_data = interrupt
+            else:
+                continue
+
+            action_requests = interrupt_data.get("action_requests", [])
+            review_configs = interrupt_data.get("review_configs", [])
+
+            # Enrich action requests with review configs
+            for action_request in action_requests:
+                tool_name = action_request.get("name", "unknown")
+                # Find matching review config
+                review_config = next(
+                    (cfg for cfg in review_configs if cfg.get("action_name") == tool_name),
+                    {"allowed_decisions": ["approve", "reject"]}
+                )
+                action_request["allowed_decisions"] = review_config.get("allowed_decisions", ["approve", "reject"])
+                all_action_requests.append(action_request)
+
+        return all_action_requests
 
     def load_portfolio_from_disk(self) -> Dict[str, Any]:
         """Load portfolio.json from disk."""

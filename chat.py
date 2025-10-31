@@ -1,10 +1,14 @@
 """Interactive chat interface for the Personal Finance Deep Agent."""
 
+import asyncio
 import json
 import sys
+import textwrap
+import uuid
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from deepagents.backends.utils import create_file_data
+from langgraph.types import Command
 
 from src.deep_agent import create_finance_deep_agent
 
@@ -121,6 +125,7 @@ def print_banner():
     print("  • Type 'clear' to clear conversation history")
     print("  • Type 'help' for assistance")
     print(f"\n{Colors.OKGREEN}✨ Smart Features:{Colors.ENDC}")
+    print(f"  • Human-in-the-loop: I'll ask permission before portfolio changes")
     print(f"  • Auto-pruning: Keeps last {MAX_CONVERSATION_TURNS} turns to prevent context bloat")
     print(f"  • Large API responses auto-saved to /financial_data/")
     print(f"  • Live tool execution display with inputs and outputs")
@@ -170,7 +175,7 @@ def print_step_header(step_num, node_name, state_update=None):
         # Show what pre-processing is doing
         print(f"{Colors.OKCYAN}   Preparing request for agent execution{Colors.ENDC}")
 
-def format_value(value, max_length=500):
+def format_value(value, max_length=10000):
     """Format a value for display with smart truncation."""
     if isinstance(value, dict):
         # Pretty print dicts as JSON
@@ -184,8 +189,8 @@ def format_value(value, max_length=500):
             value_str = str(value)
     elif isinstance(value, list):
         # Show list length and first few items
-        if len(value) > 5:
-            preview = value[:5]
+        if len(value) > 20:
+            preview = value[:20]
             return f"{preview}... ({len(value)} items total)"
         value_str = str(value)
     else:
@@ -203,10 +208,9 @@ def print_tool_call(tool_name, args, indent=""):
         description = args.get("description", "")
         print(f"{indent}{Colors.WARNING}{Colors.BOLD}🚀 SPAWNING SUBAGENT: {subagent_type}{Colors.ENDC}")
         if description:
-            # Show full description with wrapping
-            lines = [description[i:i+80] for i in range(0, len(description), 80)]
-            for line in lines:
-                print(f"{indent}{Colors.WARNING}   Description: {line}{Colors.ENDC}")
+            # Show full description with proper wrapping
+            wrapped = textwrap.fill(description, width=90, initial_indent=f"{indent}   📋 ", subsequent_indent=f"{indent}      ")
+            print(f"{Colors.WARNING}{wrapped}{Colors.ENDC}")
     elif tool_name == "write_file":
         path = args.get("file_path", "?")
         content = args.get("content", "")
@@ -257,7 +261,7 @@ def print_tool_call(tool_name, args, indent=""):
         if args:
             # Show formatted arguments
             for key, value in args.items():
-                formatted_value = format_value(value, max_length=300)
+                formatted_value = format_value(value, max_length=5000)
                 # Handle multiline values
                 if '\n' in formatted_value:
                     print(f"{indent}{Colors.OKGREEN}   {key}:{Colors.ENDC}")
@@ -267,78 +271,150 @@ def print_tool_call(tool_name, args, indent=""):
                     print(f"{indent}{Colors.OKGREEN}   {key}: {formatted_value}{Colors.ENDC}")
 
 def print_tool_result(result, indent=""):
-    """Print tool result with smart formatting."""
+    """Print tool result with smart formatting and full data display."""
     # Try to parse as JSON first
     if isinstance(result, str):
         try:
-            # Try to parse as JSON
             parsed = json.loads(result)
             result = parsed
         except:
             pass
 
     if isinstance(result, dict):
-        # Show key metrics from dict results
-        print(f"{indent}{Colors.OKBLUE}   ✓ Result:{Colors.ENDC}")
-
-        # Special handling for common result structures
+        # Show success status if present
         if "success" in result:
             success = result.get("success", False)
-            status = "✓ SUCCESS" if success else "✗ FAILED"
+            status_icon = "✓" if success else "✗"
+            status_text = "SUCCESS" if success else "FAILED"
             color = Colors.OKGREEN if success else Colors.FAIL
-            print(f"{indent}{color}     Status: {status}{Colors.ENDC}")
+            print(f"{indent}{color}   {status_icon} {status_text}{Colors.ENDC}")
 
-        if "symbol" in result:
-            print(f"{indent}{Colors.OKBLUE}     Symbol: {result['symbol']}{Colors.ENDC}")
-
+        # Show error prominently
         if "error" in result and result["error"]:
-            print(f"{indent}{Colors.FAIL}     Error: {result['error']}{Colors.ENDC}")
+            print(f"{indent}{Colors.FAIL}   ❌ Error: {result['error']}{Colors.ENDC}")
+            return
 
-        # Show summary if available
+        # Extract and display key information based on structure
+        symbol = result.get("symbol", "")
+
+        # Stock Quote Data
+        if "price" in result or "regularMarketPrice" in result:
+            price = result.get("price") or result.get("regularMarketPrice")
+            change = result.get("change") or result.get("regularMarketChange")
+            change_pct = result.get("change_percent") or result.get("regularMarketChangePercent")
+            volume = result.get("volume") or result.get("regularMarketVolume")
+            market_cap = result.get("market_cap") or result.get("marketCap")
+
+            print(f"{indent}{Colors.OKGREEN}   📊 Stock Quote:{Colors.ENDC}")
+            if symbol:
+                print(f"{indent}{Colors.OKBLUE}      • Symbol: {symbol}{Colors.ENDC}")
+            if price:
+                price_str = f"${price:,.2f}" if isinstance(price, (int, float)) else price
+                print(f"{indent}{Colors.OKBLUE}      • Price: {price_str}{Colors.ENDC}")
+            if change is not None:
+                change_color = Colors.OKGREEN if (isinstance(change, (int, float)) and change >= 0) else Colors.FAIL
+                change_str = f"{change:+,.2f}" if isinstance(change, (int, float)) else change
+                pct_str = f" ({change_pct:+.2f}%)" if change_pct is not None else ""
+                print(f"{indent}{change_color}      • Change: {change_str}{pct_str}{Colors.ENDC}")
+            if volume:
+                vol_str = f"{volume:,.0f}" if isinstance(volume, (int, float)) else volume
+                print(f"{indent}{Colors.OKBLUE}      • Volume: {vol_str}{Colors.ENDC}")
+            if market_cap:
+                mcap_str = f"${market_cap:,.0f}" if isinstance(market_cap, (int, float)) else market_cap
+                print(f"{indent}{Colors.OKBLUE}      • Market Cap: {mcap_str}{Colors.ENDC}")
+
+        # Financial Metrics
+        if "key_metrics" in result and result["key_metrics"]:
+            print(f"{indent}{Colors.OKGREEN}   💰 Key Metrics:{Colors.ENDC}")
+            metrics = result["key_metrics"]
+            for key, value in metrics.items():
+                if value is not None:
+                    # Format numbers nicely
+                    if isinstance(value, float):
+                        if abs(value) >= 1e9:
+                            value_str = f"${value/1e9:.2f}B"
+                        elif abs(value) >= 1e6:
+                            value_str = f"${value/1e6:.2f}M"
+                        elif abs(value) > 100:
+                            value_str = f"${value:,.2f}"
+                        else:
+                            value_str = f"{value:.2f}"
+                    else:
+                        value_str = str(value)
+                    print(f"{indent}{Colors.OKBLUE}      • {key}: {value_str}{Colors.ENDC}")
+
+        # Summary text
         if "summary" in result:
             summary = result["summary"]
-            # Print summary with line wrapping
+            print(f"{indent}{Colors.OKGREEN}   📋 Summary:{Colors.ENDC}")
             lines = summary.split('\n') if isinstance(summary, str) else [str(summary)]
-            for line in lines[:10]:  # First 10 lines
-                print(f"{indent}{Colors.OKBLUE}     {line}{Colors.ENDC}")
-            if len(lines) > 10:
-                print(f"{indent}{Colors.OKBLUE}     ... ({len(lines)-10} more lines){Colors.ENDC}")
+            for line in lines[:30]:  # Show up to 30 lines
+                if line.strip():
+                    print(f"{indent}{Colors.OKBLUE}      {line}{Colors.ENDC}")
 
-        # Show key metrics
-        if "key_metrics" in result and result["key_metrics"]:
-            print(f"{indent}{Colors.OKBLUE}     Key Metrics:{Colors.ENDC}")
-            metrics = result["key_metrics"]
-            for key, value in list(metrics.items())[:5]:  # First 5 metrics
-                print(f"{indent}{Colors.OKBLUE}       • {key}: {value}{Colors.ENDC}")
-
-        # Show file path if saved
+        # File path if saved
         if "file_path" in result:
-            print(f"{indent}{Colors.OKBLUE}     Saved to: {result['file_path']}{Colors.ENDC}")
+            print(f"{indent}{Colors.OKCYAN}   💾 Full data saved: {result['file_path']}{Colors.ENDC}")
 
-        # Show data preview if it's a large response
-        if "data" in result and not ("summary" in result or "key_metrics" in result):
-            data_str = str(result["data"])[:200]
-            print(f"{indent}{Colors.OKBLUE}     Data preview: {data_str}...{Colors.ENDC}")
+        # Data field - show structured view
+        if "data" in result:
+            data = result["data"]
+            # If data wasn't already displayed above, show it
+            if not any(k in result for k in ["price", "regularMarketPrice", "key_metrics", "summary"]):
+                print(f"{indent}{Colors.OKGREEN}   📦 Data:{Colors.ENDC}")
+                if isinstance(data, dict):
+                    for key, value in list(data.items())[:20]:  # Show first 20 fields
+                        if isinstance(value, (dict, list)) and len(str(value)) > 100:
+                            print(f"{indent}{Colors.OKBLUE}      • {key}: {type(value).__name__} ({len(value)} items){Colors.ENDC}")
+                        else:
+                            value_str = str(value)[:200]
+                            print(f"{indent}{Colors.OKBLUE}      • {key}: {value_str}{Colors.ENDC}")
+                elif isinstance(data, list):
+                    print(f"{indent}{Colors.OKBLUE}      List with {len(data)} items{Colors.ENDC}")
+                    for i, item in enumerate(data[:10], 1):
+                        item_str = str(item)[:200]
+                        print(f"{indent}{Colors.OKBLUE}      {i}. {item_str}{Colors.ENDC}")
+                else:
+                    print(f"{indent}{Colors.OKBLUE}      {str(data)[:500]}{Colors.ENDC}")
+
+        # If no special fields found, show all top-level keys
+        displayed_keys = {"success", "error", "symbol", "price", "regularMarketPrice", "change",
+                         "change_percent", "volume", "market_cap", "key_metrics", "summary",
+                         "file_path", "data"}
+        remaining = {k: v for k, v in result.items() if k not in displayed_keys and v is not None}
+        if remaining:
+            print(f"{indent}{Colors.OKGREEN}   ℹ️  Additional Fields:{Colors.ENDC}")
+            for key, value in list(remaining.items())[:15]:
+                if isinstance(value, (dict, list)) and len(str(value)) > 100:
+                    print(f"{indent}{Colors.OKBLUE}      • {key}: {type(value).__name__} ({len(value)} items){Colors.ENDC}")
+                else:
+                    value_str = str(value)[:300]
+                    print(f"{indent}{Colors.OKBLUE}      • {key}: {value_str}{Colors.ENDC}")
 
     elif isinstance(result, list):
-        # Show list length and preview
-        print(f"{indent}{Colors.OKBLUE}   ✓ Result: List with {len(result)} items{Colors.ENDC}")
-        for i, item in enumerate(result[:3], 1):  # Show first 3
-            item_str = str(item)[:100]
-            print(f"{indent}{Colors.OKBLUE}     {i}. {item_str}{Colors.ENDC}")
-        if len(result) > 3:
-            print(f"{indent}{Colors.OKBLUE}     ... and {len(result)-3} more items{Colors.ENDC}")
+        # Show list length and detailed preview
+        print(f"{indent}{Colors.OKGREEN}   📊 Result: List with {len(result)} items{Colors.ENDC}")
+        for i, item in enumerate(result[:15], 1):  # Show first 15 items
+            if isinstance(item, dict):
+                # For dict items, show key fields
+                item_preview = ", ".join(f"{k}={v}" for k, v in list(item.items())[:3])
+                print(f"{indent}{Colors.OKBLUE}     {i}. {{{item_preview}...}}{Colors.ENDC}")
+            else:
+                item_str = str(item)[:300]
+                print(f"{indent}{Colors.OKBLUE}     {i}. {item_str}{Colors.ENDC}")
+        if len(result) > 15:
+            print(f"{indent}{Colors.OKCYAN}     ... and {len(result)-15} more items{Colors.ENDC}")
 
     else:
-        # Plain string or other type
+        # Plain string or other type - show in full
         result_str = str(result)
-        if len(result_str) > 500:
-            # Show first 500 chars
-            lines = result_str[:500].split('\n')
+        if len(result_str) > 5000:
+            # Show first 5000 chars
+            lines = result_str[:5000].split('\n')
             print(f"{indent}{Colors.OKBLUE}   ✓ Result:{Colors.ENDC}")
-            for line in lines[:10]:
+            for line in lines[:100]:  # Show up to 100 lines
                 print(f"{indent}{Colors.OKBLUE}     {line}{Colors.ENDC}")
-            print(f"{indent}{Colors.OKBLUE}     ... (truncated, {len(result_str)} chars total){Colors.ENDC}")
+            print(f"{indent}{Colors.OKCYAN}     ... (truncated, {len(result_str):,} chars total){Colors.ENDC}")
         else:
             # Show full result
             lines = result_str.split('\n')
@@ -406,8 +482,83 @@ def show_help():
     print("  • clear - Clear conversation history")
     print("  • help - Show this help message\n")
 
-def run_chat():
-    """Run the interactive chat loop."""
+def print_approval_request(action_request, review_config):
+    """Display an approval request for a tool call."""
+    tool_name = action_request.get("name", "unknown")
+    tool_args = action_request.get("args", {})
+    allowed_decisions = review_config.get("allowed_decisions", ["approve", "reject"])
+
+    print(f"\n{Colors.BOLD}{Colors.WARNING}⚠️  APPROVAL REQUIRED{Colors.ENDC}")
+    print(f"{Colors.WARNING}{'━' * 60}{Colors.ENDC}")
+    print(f"{Colors.BOLD}Tool:{Colors.ENDC} {tool_name}")
+    print(f"{Colors.BOLD}Arguments:{Colors.ENDC}")
+
+    # Format arguments nicely
+    for key, value in tool_args.items():
+        # Use textwrap for better formatting of long descriptions
+        if isinstance(value, str) and len(value) > 100:
+            wrapped = textwrap.fill(value, width=90, initial_indent="  ", subsequent_indent="  ")
+            print(f"  {Colors.OKCYAN}{key}:{Colors.ENDC}")
+            print(f"{Colors.OKCYAN}{wrapped}{Colors.ENDC}")
+        else:
+            formatted_value = format_value(value, max_length=5000)
+            if '\n' in formatted_value:
+                print(f"  {Colors.OKCYAN}{key}:{Colors.ENDC}")
+                for line in formatted_value.split('\n'):
+                    print(f"    {Colors.OKCYAN}{line}{Colors.ENDC}")
+            else:
+                print(f"  {Colors.OKCYAN}{key}: {formatted_value}{Colors.ENDC}")
+
+    print(f"{Colors.WARNING}{'━' * 60}{Colors.ENDC}")
+
+    # Show description if available
+    description = action_request.get("description")
+    if description:
+        print(f"{Colors.OKCYAN}Description: {description}{Colors.ENDC}\n")
+
+    return allowed_decisions
+
+async def get_user_decision(allowed_decisions):
+    """Get user's decision on whether to approve/reject/edit a tool call (async)."""
+    # Map decision types to user-friendly prompts
+    decision_map = {
+        "approve": "y",
+        "reject": "n",
+        "edit": "e"
+    }
+
+    # Build prompt based on allowed decisions
+    prompt_parts = []
+    if "approve" in allowed_decisions:
+        prompt_parts.append(f"{Colors.OKGREEN}[y]es{Colors.ENDC}")
+    if "reject" in allowed_decisions:
+        prompt_parts.append(f"{Colors.FAIL}[n]o{Colors.ENDC}")
+    if "edit" in allowed_decisions:
+        prompt_parts.append(f"{Colors.OKCYAN}[e]dit{Colors.ENDC}")
+
+    prompt = f"Approve? ({'/'.join(prompt_parts)}): "
+
+    while True:
+        try:
+            # Run input() in thread pool to avoid blocking
+            user_input = await asyncio.to_thread(input, prompt)
+            user_input = user_input.strip().lower()
+
+            if user_input in ['y', 'yes'] and "approve" in allowed_decisions:
+                return {"type": "approve"}
+            elif user_input in ['n', 'no'] and "reject" in allowed_decisions:
+                return {"type": "reject"}
+            elif user_input in ['e', 'edit'] and "edit" in allowed_decisions:
+                print(f"{Colors.WARNING}Edit functionality coming soon. Rejecting for now.{Colors.ENDC}")
+                return {"type": "reject"}
+            else:
+                print(f"{Colors.FAIL}Invalid choice. Please try again.{Colors.ENDC}")
+        except (KeyboardInterrupt, EOFError):
+            print(f"\n{Colors.WARNING}Defaulting to reject{Colors.ENDC}")
+            return {"type": "reject"}
+
+async def run_chat():
+    """Run the interactive chat loop (async)."""
 
     print_banner()
 
@@ -415,10 +566,14 @@ def run_chat():
     print("📂 Loading example portfolio...")
     initial_files = load_portfolio()
 
-    # Create agent
-    print("\n🏗️  Creating deep agent...")
-    agent = create_finance_deep_agent()
-    print(f"{Colors.OKGREEN}✓ Agent ready with 8 specialized subagents{Colors.ENDC}")
+    # Generate thread ID for checkpointing and local file storage
+    thread_id = str(uuid.uuid4())
+
+    # Create agent with session_id for local filesystem
+    print(f"\n🏗️  Creating deep agent (session: {thread_id[:8]}...)...")
+    agent = create_finance_deep_agent(session_id=thread_id)
+    print(f"{Colors.OKGREEN}✓ Agent ready with 8 specialized subagents (ASYNC MODE){Colors.ENDC}")
+    print(f"{Colors.OKGREEN}✓ Files will be saved to: sessions/{thread_id}/{Colors.ENDC}")
     print(f"{Colors.OKGREEN}  - market-data-fetcher (NEW: Yahoo Finance API){Colors.ENDC}")
     print(f"{Colors.OKGREEN}  - research-analyst (NEW: Company research){Colors.ENDC}")
     print(f"{Colors.OKGREEN}  - portfolio, cashflow, goals, debt, tax, risk analyzers{Colors.ENDC}\n")
@@ -426,12 +581,14 @@ def run_chat():
     # Initialize conversation state
     conversation_messages = []
     files = initial_files.copy()
+    # thread_id already generated above for agent creation
 
     # Main chat loop
     while True:
-        # Get user input
+        # Get user input (async to avoid blocking)
         try:
-            user_input = input(f"{Colors.BOLD}You: {Colors.ENDC}").strip()
+            user_input = await asyncio.to_thread(input, f"{Colors.BOLD}You: {Colors.ENDC}")
+            user_input = user_input.strip()
         except (KeyboardInterrupt, EOFError):
             print(f"\n\n{Colors.WARNING}👋 Goodbye!{Colors.ENDC}\n")
             break
@@ -478,24 +635,44 @@ def run_chat():
         if context_summary:
             messages_to_send.insert(0, context_summary)
 
-        # Prepare state
+        # Prepare state and config
         state = {
             "messages": messages_to_send,  # Pass pruned conversation history
             "files": files.copy()
+        }
+        config = {
+            "configurable": {
+                "thread_id": thread_id
+            }
         }
 
         # Execute agent with live progress
         print_thinking()
         step_count = 0
         new_messages = []
+        has_interrupted = False
+        collected_interrupts = []
 
         try:
             print(f"{Colors.OKCYAN}{'─' * 80}{Colors.ENDC}")
 
-            for chunk in agent.stream(state, stream_mode="updates"):
+            async for chunk in agent.astream(state, config=config, stream_mode="updates"):
                 step_count += 1
 
                 for node_name, state_update in chunk.items():
+                    # Check for interrupts FIRST (before any processing)
+                    if node_name == "__interrupt__":
+                        has_interrupted = True
+                        # state_update can be a tuple, list, or single Interrupt object
+                        if isinstance(state_update, (tuple, list)):
+                            # Unpack tuple/list of Interrupt objects
+                            collected_interrupts.extend(state_update)
+                        else:
+                            # Single Interrupt object
+                            collected_interrupts.append(state_update)
+                        # Don't process interrupt as a normal node
+                        continue
+
                     # Detect if this is a subagent node
                     is_subagent = node_name.startswith("SubAgent[") or "SubAgent" in node_name
                     subagent_name = ""
@@ -557,6 +734,122 @@ def run_chat():
                     if is_subagent:
                         print(f"{Colors.OKCYAN}  ╰{'─' * 50}╯{Colors.ENDC}")
 
+            # Handle interrupts if any occurred
+            if has_interrupted and collected_interrupts:
+                print(f"\n{Colors.WARNING}{'━' * 80}{Colors.ENDC}")
+                print(f"{Colors.BOLD}{Colors.WARNING}🛑 Agent Paused - Approval Required{Colors.ENDC}")
+                print(f"{Colors.WARNING}{'━' * 80}{Colors.ENDC}\n")
+
+                # Extract action requests from interrupts
+                # Based on LangChain docs: result["__interrupt__"][0].value contains the data
+                all_action_requests = []
+                all_review_configs = []
+
+                for interrupt in collected_interrupts:
+                    # Interrupt objects have a .value attribute containing the dict
+                    if hasattr(interrupt, 'value'):
+                        interrupt_data = interrupt.value
+                    elif isinstance(interrupt, dict):
+                        # Fallback if it's already a dict
+                        interrupt_data = interrupt
+                    else:
+                        continue
+
+                    # Extract action_requests and review_configs from interrupt_data
+                    if isinstance(interrupt_data, dict):
+                        action_requests = interrupt_data.get("action_requests", [])
+                        review_configs = interrupt_data.get("review_configs", [])
+
+                        all_action_requests.extend(action_requests)
+                        all_review_configs.extend(review_configs)
+
+                # Create a map from tool name to review config
+                config_map = {cfg.get("action_name", ""): cfg for cfg in all_review_configs if cfg.get("action_name")}
+
+                # If no action requests found, something went wrong
+                if not all_action_requests:
+                    print(f"{Colors.FAIL}⚠️  No action requests found. Continuing...{Colors.ENDC}")
+                    continue  # Skip to next iteration
+
+                # Collect decisions for each action
+                decisions = []
+                for i, action_request in enumerate(all_action_requests, 1):
+                    tool_name = action_request.get("name", "unknown")
+                    review_config = config_map.get(tool_name, {"allowed_decisions": ["approve", "reject"]})
+
+                    print(f"{Colors.BOLD}Request {i} of {len(all_action_requests)}:{Colors.ENDC}")
+                    allowed_decisions = print_approval_request(action_request, review_config)
+                    decision = await get_user_decision(allowed_decisions)
+                    decisions.append(decision)
+
+                    if decision["type"] == "approve":
+                        print(f"{Colors.OKGREEN}✓ Approved{Colors.ENDC}\n")
+                    else:
+                        print(f"{Colors.FAIL}✗ Rejected{Colors.ENDC}\n")
+
+                # Resume execution with decisions
+                print(f"{Colors.OKCYAN}{'─' * 80}{Colors.ENDC}")
+                print(f"{Colors.BOLD}🔄 Resuming agent execution...{Colors.ENDC}\n")
+
+                # Use Command to resume with decisions
+                resume_state = Command(resume={"decisions": decisions})
+
+                # Stream the resumed execution (async)
+                async for chunk in agent.astream(resume_state, config=config, stream_mode="updates"):
+                    step_count += 1
+
+                    for node_name, state_update in chunk.items():
+                        # Same processing as before
+                        is_subagent = node_name.startswith("SubAgent[") or "SubAgent" in node_name
+                        subagent_name = ""
+                        if is_subagent:
+                            if "[" in node_name and "]" in node_name:
+                                subagent_name = node_name.split("[")[1].split("]")[0]
+
+                        indent = "  " if is_subagent else ""
+
+                        if is_subagent:
+                            print(f"\n{Colors.BOLD}{Colors.OKCYAN}  ╭─── Subagent: {subagent_name} ───╮{Colors.ENDC}")
+                        else:
+                            print_step_header(step_count, node_name, state_update)
+
+                        if state_update is None:
+                            continue
+
+                        if "messages" in state_update:
+                            for msg in state_update["messages"]:
+                                new_messages.append(msg)
+
+                                if msg.type == "ai" and hasattr(msg, "tool_calls") and msg.tool_calls:
+                                    for tool_call in msg.tool_calls:
+                                        tool_name = tool_call.get("name", "unknown")
+                                        tool_args = tool_call.get("args", {})
+                                        print_tool_call(tool_name, tool_args, indent=indent)
+
+                                elif msg.type == "tool":
+                                    tool_name = getattr(msg, 'name', 'unknown')
+                                    print(f"{indent}{Colors.OKGREEN}  [{tool_name}] returned:{Colors.ENDC}")
+                                    print_tool_result(msg.content, indent=indent)
+
+                        if "files" in state_update and state_update["files"]:
+                            new_files = state_update["files"]
+                            files.update(new_files)
+                            print(f"{indent}{Colors.OKBLUE}📁 Files updated: {len(new_files)} file(s){Colors.ENDC}")
+                            for path in list(new_files.keys())[:3]:
+                                print(f"{indent}{Colors.OKBLUE}   - {path}{Colors.ENDC}")
+
+                        if "todos" in state_update and state_update["todos"]:
+                            todos = state_update["todos"]
+                            print(f"{indent}{Colors.WARNING}📋 TODO LIST:{Colors.ENDC}")
+                            for todo in todos[:5]:
+                                status = todo.get("status", "unknown")
+                                content = todo.get("content", "")
+                                emoji = "✓" if status == "completed" else "⏳" if status == "in_progress" else "○"
+                                print(f"{indent}{Colors.WARNING}   {emoji} [{status}] {content}{Colors.ENDC}")
+
+                        if is_subagent:
+                            print(f"{Colors.OKCYAN}  ╰{'─' * 50}╯{Colors.ENDC}")
+
             # Add only new AI messages to conversation history
             for msg in new_messages:
                 if msg.type == "ai" and msg not in conversation_messages:
@@ -587,7 +880,8 @@ def run_chat():
 
 if __name__ == "__main__":
     try:
-        run_chat()
+        # Run async chat loop
+        asyncio.run(run_chat())
     except Exception as e:
         print(f"\n{Colors.FAIL}Fatal error: {e}{Colors.ENDC}\n")
         sys.exit(1)

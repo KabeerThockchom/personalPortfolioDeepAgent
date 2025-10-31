@@ -138,6 +138,7 @@ reports/
 working/
 temp/
 analysis_history/
+sessions/  # Local filesystem backend session folders
 
 # API Keys and Secrets
 .env.local

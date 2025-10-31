@@ -16,6 +16,13 @@ class Session:
     files: Dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
     last_activity: datetime = field(default_factory=datetime.now)
+    thread_id: str = None  # Thread ID for LangGraph checkpointing (matches session_id)
+    pending_interrupts: Optional[List[Any]] = field(default_factory=list)  # Pending approval requests
+
+    def __post_init__(self):
+        """Initialize thread_id to match session_id if not provided."""
+        if self.thread_id is None:
+            self.thread_id = self.session_id
 
     def update_activity(self):
         """Update last activity timestamp."""
@@ -50,6 +57,14 @@ class Session:
         return {
             "messages": self.messages,
             "files": self.files
+        }
+
+    def get_config(self) -> Dict[str, Any]:
+        """Get LangGraph config with thread_id for checkpointing."""
+        return {
+            "configurable": {
+                "thread_id": self.thread_id
+            }
         }
 
     def update_files(self, new_files: Dict[str, Any]):
@@ -115,6 +130,7 @@ class SessionManager:
             session = self.sessions[session_id]
             session.messages = []
             session.files = {}
+            session.pending_interrupts = []
             session.update_activity()
             return True
         return False

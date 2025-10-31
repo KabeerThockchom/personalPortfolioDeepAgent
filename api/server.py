@@ -18,6 +18,7 @@ from api.models import (
     TradeResponse,
     FileListResponse,
     FileContentResponse,
+    ApprovalResponse,
 )
 from api.session_manager import session_manager
 from api.agent_service import agent_service
@@ -97,6 +98,36 @@ async def websocket_chat(websocket: WebSocket, session_id: Optional[str] = Query
                         "type": "error",
                         "error": str(e),
                         "details": "Error during agent execution"
+                    })
+
+            elif data.get("type") == "approval_response":
+                # User provided approval decisions
+                decisions = data.get("decisions", [])
+
+                if not decisions:
+                    await websocket.send_json({
+                        "type": "error",
+                        "error": "No decisions provided"
+                    })
+                    continue
+
+                # Clear pending interrupts
+                session.pending_interrupts = []
+
+                # Resume agent execution with decisions
+                try:
+                    for event in agent_service.stream_response(
+                        session,
+                        is_resume=True,
+                        decisions=decisions
+                    ):
+                        await websocket.send_json(event.model_dump())
+
+                except Exception as e:
+                    await websocket.send_json({
+                        "type": "error",
+                        "error": str(e),
+                        "details": "Error during agent resume"
                     })
 
             elif data.get("type") == "ping":

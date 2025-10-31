@@ -62,32 +62,34 @@ def extract_quote_metrics(data: Dict) -> Dict[str, Any]:
         Dict with key metrics
     """
     try:
-        # Try to extract from various possible structures
-        price_data = data.get("data", {}).get("price", {})
-        summary = data.get("data", {}).get("summaryDetail", {})
-
-        # Fallback: try direct access
-        if not price_data:
+        # Yahoo Finance structure: quoteSummary.result[0]
+        if "quoteSummary" in data and "result" in data["quoteSummary"]:
+            result = data["quoteSummary"]["result"][0] if data["quoteSummary"]["result"] else {}
+            price_data = result.get("price", {})
+            summary = result.get("summaryDetail", {})
+        else:
+            # Fallback: try direct access
             price_data = data.get("price", {})
-        if not summary:
             summary = data.get("summaryDetail", {})
 
         metrics = {
-            "symbol": data.get("symbol", ""),
-            "price": price_data.get("regularMarketPrice", 0),
+            "symbol": price_data.get("symbol", data.get("symbol", "")),
+            "price": price_data.get("regularMarketPrice") or summary.get("previousClose", 0),
             "change": price_data.get("regularMarketChange", 0),
             "change_percent": price_data.get("regularMarketChangePercent", 0),
             "volume": price_data.get("regularMarketVolume", 0),
-            "market_cap": summary.get("marketCap", 0),
+            "market_cap": summary.get("marketCap") or price_data.get("marketCap", 0),
             "day_high": summary.get("dayHigh", 0),
             "day_low": summary.get("dayLow", 0),
             "52w_high": summary.get("fiftyTwoWeekHigh", 0),
             "52w_low": summary.get("fiftyTwoWeekLow", 0),
+            "beta": summary.get("beta", 0),
+            "pe_ratio": summary.get("trailingPE", 0),
         }
 
         return {k: v for k, v in metrics.items() if v}  # Remove empty values
 
-    except Exception:
+    except Exception as e:
         return {}
 
 
@@ -313,28 +315,31 @@ def optimize_tool_response(
     # Generate file path
     file_path = save_large_response(response.get("data", {}), filename, symbol)
 
-    # Extract metrics based on tool type
+    # Extract metrics based on tool type (pass response["data"] to extractors)
+    response_data = response.get("data", {})
+
     if "quote" in tool_name or "summary" in tool_name:
-        metrics = extract_quote_metrics(response)
+        metrics = extract_quote_metrics(response_data)
         summary = create_quote_summary(metrics, file_path)
     elif "statistics" in tool_name:
-        metrics = extract_statistics_metrics(response)
+        metrics = extract_statistics_metrics(response_data)
         summary = create_statistics_summary(metrics, file_path)
     elif "analysis" in tool_name or "recommendation" in tool_name:
-        metrics = extract_analysis_metrics(response)
+        metrics = extract_analysis_metrics(response_data)
         summary = create_analysis_summary(metrics, file_path)
     else:
         metrics = {}
         summary = create_generic_summary(response, filename, file_path)
 
-    # Return optimized response
+    # Return optimized response (WITHOUT full_data_json to save tokens)
     return {
         "success": True,
         "symbol": symbol or response.get("symbol", ""),
         "summary": summary,
         "key_metrics": metrics,
         "file_path": file_path,
-        "full_data_json": json.dumps(response.get("data", {})),  # For agent to write to file
+        # NOTE: full_data_json removed - it was causing massive token waste (26K+ tokens per call)
+        # The full data is already saved to file_path by the calling tool
     }
 
 
