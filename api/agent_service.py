@@ -3,12 +3,12 @@ Agent service for executing financial agent with streaming support.
 """
 import json
 import time
-from typing import Iterator, Dict, Any, List
+from typing import AsyncIterator, Dict, Any, List
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
 from src.deep_agent import create_finance_deep_agent
-from api.event_parser import parse_stream_to_events
+from api.event_parser import EventParser
 from api.models import AgentEvent
 from api.session_manager import Session
 
@@ -18,6 +18,7 @@ class AgentService:
 
     def __init__(self):
         self.agent = None
+        self.parser_instances = {}  # Store parser instances per session
         self._initialize_agent()
 
     def _initialize_agent(self):
@@ -28,15 +29,15 @@ class AgentService:
             print(f"Error initializing agent: {e}")
             raise
 
-    def stream_response(
+    async def stream_response(
         self,
         session: Session,
         user_message: str = None,
         is_resume: bool = False,
         decisions: List[Dict] = None
-    ) -> Iterator[AgentEvent]:
+    ) -> AsyncIterator[AgentEvent]:
         """
-        Stream agent response as events.
+        Stream agent response as events (async).
 
         Args:
             session: Chat session with conversation history
@@ -58,16 +59,19 @@ class AgentService:
         state = session.get_state() if not is_resume else Command(resume={"decisions": decisions or []})
         config = session.get_config()
 
-        try:
-            # Use state streaming with config for checkpointing support
-            stream = self.agent.stream(state, config=config, stream_mode="updates")
+        # Get or create parser instance for this session
+        parser = self.parser_instances.get(session.session_id)
+        if not parser:
+            parser = EventParser()
+            self.parser_instances[session.session_id] = parser
 
-            # Check for interrupts and parse stream into events
-            for chunk in stream:
+        try:
+            # Use async streaming with config for checkpointing support
+            async for chunk in self.agent.astream(state, config=config, stream_mode="updates"):
                 # Check each state update for interrupts
                 for node_name, state_update in chunk.items():
                     # Detect interrupts
-                    if state_update and "__interrupt__" in state_update:
+                    if state_update and isinstance(state_update, dict) and "__interrupt__" in state_update:
                         # Store interrupts in session
                         interrupts = state_update["__interrupt__"]
                         if isinstance(interrupts, list):
@@ -84,9 +88,18 @@ class AgentService:
                         # Stop streaming - wait for user decisions
                         return
 
-                # Parse chunk into events as before
-                for event in parse_stream_to_events([chunk]):
+                # Parse chunk into events using session-specific parser
+                events = parser.parse_chunk(chunk)
+                for event in events:
                     yield event
+            
+            # Emit final events after stream completes
+            final_events = parser.finalize()
+            for event in final_events:
+                yield event
+            # Reset parser for next request
+            parser = EventParser()
+            self.parser_instances[session.session_id] = parser
 
         except Exception as e:
             # Yield error event

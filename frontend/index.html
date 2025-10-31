@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Deep Agent</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🤖 Personal Finance Deep Agent</h1>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Chat Container -->
+        <div class="chat-container" id="chatContainer">
+            <div class="welcome-message" id="welcomeMessage">
+                <h2>Welcome! 👋</h2>
+                <p>I'm your personal financial assistant with <strong>REAL-TIME</strong> market data!</p>
+                <div class="features">
+                    <div class="feature-item">📊 Portfolio analysis with real Yahoo Finance prices</div>
+                    <div class="feature-item">🔍 Company research (analyst ratings, news, ESG scores)</div>
+                    <div class="feature-item">💼 Retirement planning and projections</div>
+                    <div class="feature-item">💰 Cash flow and budgeting analysis</div>
+                    <div class="feature-item">📈 Debt management strategies</div>
+                    <div class="feature-item">🧾 Tax optimization opportunities</div>
+                    <div class="feature-item">⚠️ Risk assessment and insurance gaps</div>
+                </div>
+                <p class="tip">💡 <strong>Tip:</strong> I work best when you load portfolio data first!</p>
+            </div>
+        </div>
+
+        <!-- Approval Modal -->
+        <div class="modal" id="approvalModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>⚠️ Approval Required</h2>
+                    <button class="close-btn" onclick="closeApprovalModal()">×</button>
+                </div>
+                <div class="modal-body" id="approvalBody">
+                    <!-- Approval requests will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-container">
+            <div class="input-wrapper">
+                <textarea 
+                    id="messageInput" 
+                    placeholder="Ask me anything about your finances..."
+                    rows="1"
+                ></textarea>
+                <button id="sendButton" class="send-button" disabled>
+                    <span>Send</span>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M2 10L18 2L11 18L9 10L2 10Z" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="input-footer">
+                <span class="session-info">Session: <span id="sessionId">-</span></span>
+                <button class="clear-btn" id="clearBtn">Clear History</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

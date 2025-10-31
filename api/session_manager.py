@@ -86,14 +86,13 @@ class SessionManager:
         # Seed known files so tools like glob/ls can discover them
         try:
             import os
+            from deepagents.backends.utils import create_file_data
             portfolio_path = "portfolio.json"
             if os.path.exists(portfolio_path):
                 with open(portfolio_path, "r") as f:
                     content = f.read()
-                # Map to the agent-visible path
-                new_session.files["/financial_data/portfolio.json"] = {
-                    "content": content,
-                }
+                # Map to the agent-visible path using proper file format
+                new_session.files["/financial_data/kabeer_thockchom_portfolio.json"] = create_file_data(content)
         except Exception:
             # Best-effort seeding; continue even if it fails
             pass

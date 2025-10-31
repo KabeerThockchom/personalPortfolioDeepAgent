@@ -27,7 +27,8 @@ def ensure_data_dir():
 def save_large_response(
     data: Dict[str, Any],
     filename: str,
-    symbol: Optional[str] = None
+    symbol: Optional[str] = None,
+    session_id: Optional[str] = None
 ) -> str:
     """
     Save large response data to a file.
@@ -36,18 +37,61 @@ def save_large_response(
         data: The response data to save
         filename: Base filename (e.g., "quote", "statistics")
         symbol: Stock symbol (optional, added to filename)
+        session_id: Session ID for determining actual disk location
 
     Returns:
-        File path where data was saved
+        File path where data was saved (virtual path)
     """
-    # Generate filename
+    # Generate virtual filename
     if symbol:
         file_path = f"{DATA_DIR}/{symbol}_{filename}.json"
     else:
         file_path = f"{DATA_DIR}/{filename}.json"
 
-    # Note: In DeepAgents, we return the path
-    # The actual file will be written by the agent using write_file
+    # Actually write the file to disk using FilesystemBackend logic
+    # We need to write to sessions/{session_id}/financial_data/ on disk
+    try:
+        if session_id:
+            # Write to actual disk location
+            actual_dir = Path("sessions") / session_id / "financial_data"
+            actual_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Determine actual filename
+            if symbol:
+                actual_filename = f"{symbol}_{filename}.json"
+            else:
+                actual_filename = f"{filename}.json"
+            
+            actual_path = actual_dir / actual_filename
+            
+            # Write JSON file
+            with open(actual_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        else:
+            # Fallback: try to write to sessions directory if we can find a recent one
+            sessions_dir = Path("sessions")
+            if sessions_dir.exists():
+                # Find most recent session directory
+                session_dirs = [d for d in sessions_dir.iterdir() if d.is_dir()]
+                if session_dirs:
+                    latest_session = max(session_dirs, key=lambda p: p.stat().st_mtime)
+                    actual_dir = latest_session / "financial_data"
+                    actual_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    if symbol:
+                        actual_filename = f"{symbol}_{filename}.json"
+                    else:
+                        actual_filename = f"{filename}.json"
+                    
+                    actual_path = actual_dir / actual_filename
+                    with open(actual_path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, indent=2)
+    except Exception as e:
+        # If file writing fails, log but continue - agent can still use the path
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to write file {file_path}: {e}")
+
     return file_path
 
 
@@ -291,7 +335,8 @@ def create_generic_summary(data: Dict, filename: str, file_path: str) -> str:
 def optimize_tool_response(
     response: Dict[str, Any],
     tool_name: str,
-    symbol: Optional[str] = None
+    symbol: Optional[str] = None,
+    session_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Optimize a tool response by saving large data to files and returning summaries.
@@ -300,6 +345,7 @@ def optimize_tool_response(
         response: Original tool response
         tool_name: Name of the tool (e.g., "get_stock_quote")
         symbol: Stock symbol (optional)
+        session_id: Session ID for file storage (optional, will try to auto-detect)
 
     Returns:
         Optimized response with summary and file reference
@@ -312,8 +358,8 @@ def optimize_tool_response(
     # Extract filename from tool name
     filename = tool_name.replace("get_stock_", "").replace("get_", "")
 
-    # Generate file path
-    file_path = save_large_response(response.get("data", {}), filename, symbol)
+    # Generate file path and actually write the file
+    file_path = save_large_response(response.get("data", {}), filename, symbol, session_id)
 
     # Extract metrics based on tool type (pass response["data"] to extractors)
     response_data = response.get("data", {})

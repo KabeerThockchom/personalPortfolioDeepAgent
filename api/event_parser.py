@@ -2,7 +2,7 @@
 Parse LangGraph stream chunks into frontend-friendly events.
 """
 import time
-from typing import Any, Dict, List, Iterator
+from typing import Any, Dict, List, Iterator, AsyncIterator
 from langchain_core.messages import AIMessage, ToolMessage
 
 from api.models import (
@@ -170,7 +170,7 @@ class EventParser:
 
 def parse_stream_to_events(stream: Iterator[Dict[str, Any]]) -> Iterator[AgentEvent]:
     """
-    Parse LangGraph stream into events.
+    Parse LangGraph stream into events (synchronous version).
 
     Args:
         stream: Iterator of LangGraph chunks
@@ -190,3 +190,7 @@ def parse_stream_to_events(stream: Iterator[Dict[str, Any]]) -> Iterator[AgentEv
         final_events = parser.finalize()
         for event in final_events:
             yield event
+
+
+# Note: Async parsing is now handled directly in agent_service.py
+# using per-session parser instances to avoid concurrency issues

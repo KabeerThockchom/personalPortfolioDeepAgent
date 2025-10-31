@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from deepagents.backends.utils import create_file_data
 
 from api.models import (
     ChatMessage,
@@ -33,16 +35,40 @@ app = FastAPI(
 # Add CORS middleware for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite default ports
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Serve static files (frontend) - serve from root for easier access
+@app.get("/index.html")
+async def serve_index():
+    """Serve frontend index.html"""
+    return FileResponse("frontend/index.html")
+
+@app.get("/styles.css")
+async def serve_styles():
+    """Serve frontend CSS"""
+    return FileResponse("frontend/styles.css")
+
+@app.get("/app.js")
+async def serve_app():
+    """Serve frontend JavaScript"""
+    return FileResponse("frontend/app.js")
+
 
 @app.get("/")
 async def root():
-    """Health check endpoint."""
+    """Health check endpoint or serve frontend."""
+    try:
+        # Try to serve index.html
+        index_path = Path("frontend/index.html")
+        if index_path.exists():
+            return FileResponse(index_path)
+    except Exception:
+        pass
+    
     return {
         "status": "healthy",
         "service": "Personal Finance Deep Agent API",
@@ -87,9 +113,9 @@ async def websocket_chat(websocket: WebSocket, session_id: Optional[str] = Query
                     })
                     continue
 
-                # Stream agent response
+                # Stream agent response (async)
                 try:
-                    for event in agent_service.stream_response(session, user_message):
+                    async for event in agent_service.stream_response(session, user_message):
                         # Send event as JSON
                         await websocket.send_json(event.model_dump())
 
@@ -114,9 +140,9 @@ async def websocket_chat(websocket: WebSocket, session_id: Optional[str] = Query
                 # Clear pending interrupts
                 session.pending_interrupts = []
 
-                # Resume agent execution with decisions
+                # Resume agent execution with decisions (async)
                 try:
-                    for event in agent_service.stream_response(
+                    async for event in agent_service.stream_response(
                         session,
                         is_resume=True,
                         decisions=decisions
@@ -318,6 +344,40 @@ async def health_check():
         "status": "healthy",
         "agent_initialized": agent_service.agent is not None,
         "active_sessions": len(session_manager.sessions)
+    }
+
+
+@app.get("/api/files/explain/{path:path}")
+async def explain_file_path(path: str, session_id: Optional[str] = Query(None)):
+    """
+    Explain where a virtual file path is actually stored on disk.
+    
+    Args:
+        path: Virtual file path (e.g., "/financial_data/META_quote.json")
+        session_id: Session ID
+    """
+    session = session_manager.get_session(session_id)
+    
+    # Determine actual storage location based on path prefix
+    if path.startswith("/financial_data/"):
+        actual_path = f"sessions/{session.session_id}/financial_data/{path.replace('/financial_data/', '')}"
+        storage_type = "FilesystemBackend (persistent on disk)"
+    elif path.startswith("/reports/"):
+        actual_path = f"sessions/{session.session_id}/reports/{path.replace('/reports/', '')}"
+        storage_type = "FilesystemBackend (persistent on disk)"
+    elif path.startswith("/memories/") or path.startswith("/user_profiles/") or path.startswith("/analysis_history/"):
+        actual_path = "LangGraph Store (persistent across sessions)"
+        storage_type = "StoreBackend (persistent across sessions)"
+    else:
+        actual_path = "LangGraph State (ephemeral, within current conversation)"
+        storage_type = "StateBackend (ephemeral)"
+    
+    return {
+        "virtual_path": path,
+        "actual_location": actual_path,
+        "storage_type": storage_type,
+        "session_id": session.session_id,
+        "exists_in_session": path in session.files
     }
 
 
