@@ -8,7 +8,7 @@ import uuid
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from deepagents.backends.utils import create_file_data
-from langgraph.types import Command
+from langgraph.types import Command, Overwrite
 
 from src.deep_agent import create_finance_deep_agent
 
@@ -695,7 +695,16 @@ async def run_chat():
 
                     # Show messages and tool calls
                     if "messages" in state_update:
-                        for msg in state_update["messages"]:
+                        # Handle Overwrite wrapper from LangGraph
+                        messages = state_update["messages"]
+                        if isinstance(messages, Overwrite):
+                            messages = messages.value
+
+                        # Ensure messages is iterable
+                        if not isinstance(messages, (list, tuple)):
+                            messages = [messages]
+
+                        for msg in messages:
                             new_messages.append(msg)
 
                             # Show tool calls from AI
@@ -712,23 +721,41 @@ async def run_chat():
                                 print(f"{indent}{Colors.OKGREEN}  [{tool_name}] returned:{Colors.ENDC}")
                                 print_tool_result(msg.content, indent=indent)
 
-                    # Show file updates
+                    # Show file updates (only if content actually changed)
                     if "files" in state_update and state_update["files"]:
                         new_files = state_update["files"]
-                        files.update(new_files)
-                        print(f"{indent}{Colors.OKBLUE}📁 Files updated: {len(new_files)} file(s){Colors.ENDC}")
-                        for path in list(new_files.keys())[:3]:  # Show first 3
-                            print(f"{indent}{Colors.OKBLUE}   - {path}{Colors.ENDC}")
+                        # Handle Overwrite wrapper
+                        if isinstance(new_files, Overwrite):
+                            new_files = new_files.value
+                        if new_files:
+                            # Detect actual changes (new files or modified content)
+                            changed_files = {}
+                            for path, new_data in new_files.items():
+                                if path not in files or files[path] != new_data:
+                                    changed_files[path] = new_data
+
+                            # Update files dict
+                            files.update(new_files)
+
+                            # Only show message if files actually changed
+                            if changed_files:
+                                print(f"{indent}{Colors.OKBLUE}📁 Files updated: {len(changed_files)} file(s){Colors.ENDC}")
+                                for path in list(changed_files.keys())[:3]:  # Show first 3
+                                    print(f"{indent}{Colors.OKBLUE}   - {path}{Colors.ENDC}")
 
                     # Show todos
                     if "todos" in state_update and state_update["todos"]:
                         todos = state_update["todos"]
-                        print(f"{indent}{Colors.WARNING}📋 TODO LIST:{Colors.ENDC}")
-                        for todo in todos[:5]:  # Show first 5
-                            status = todo.get("status", "unknown")
-                            content = todo.get("content", "")
-                            emoji = "✓" if status == "completed" else "⏳" if status == "in_progress" else "○"
-                            print(f"{indent}{Colors.WARNING}   {emoji} [{status}] {content}{Colors.ENDC}")
+                        # Handle Overwrite wrapper
+                        if isinstance(todos, Overwrite):
+                            todos = todos.value
+                        if todos:
+                            print(f"{indent}{Colors.WARNING}📋 TODO LIST:{Colors.ENDC}")
+                            for todo in todos[:5]:  # Show first 5
+                                status = todo.get("status", "unknown")
+                                content = todo.get("content", "")
+                                emoji = "✓" if status == "completed" else "⏳" if status == "in_progress" else "○"
+                                print(f"{indent}{Colors.WARNING}   {emoji} [{status}] {content}{Colors.ENDC}")
 
                     # Close subagent box
                     if is_subagent:
@@ -833,10 +860,20 @@ async def run_chat():
 
                         if "files" in state_update and state_update["files"]:
                             new_files = state_update["files"]
+                            # Detect actual changes (new files or modified content)
+                            changed_files = {}
+                            for path, new_data in new_files.items():
+                                if path not in files or files[path] != new_data:
+                                    changed_files[path] = new_data
+
+                            # Update files dict
                             files.update(new_files)
-                            print(f"{indent}{Colors.OKBLUE}📁 Files updated: {len(new_files)} file(s){Colors.ENDC}")
-                            for path in list(new_files.keys())[:3]:
-                                print(f"{indent}{Colors.OKBLUE}   - {path}{Colors.ENDC}")
+
+                            # Only show message if files actually changed
+                            if changed_files:
+                                print(f"{indent}{Colors.OKBLUE}📁 Files updated: {len(changed_files)} file(s){Colors.ENDC}")
+                                for path in list(changed_files.keys())[:3]:
+                                    print(f"{indent}{Colors.OKBLUE}   - {path}{Colors.ENDC}")
 
                         if "todos" in state_update and state_update["todos"]:
                             todos = state_update["todos"]

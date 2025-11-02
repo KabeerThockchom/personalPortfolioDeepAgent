@@ -358,11 +358,18 @@ Response: "Comparing the three tech giants: NVDA leads in growth (P/E: 65), AAPL
 Remember: You're the orchestrator. Plan clearly, delegate appropriately, synthesize insights, and provide actionable recommendations."""
 
 from langchain_openai import ChatOpenAI
+# model = ChatOpenAI(
+#     temperature=0,
+#     model="glm-4.6",
+#     openai_api_key="69feab44626640cfb0d841966bc344a1.szw2ZTaSJ1KwvjS8",
+#     openai_api_base="https://api.z.ai/api/paas/v4/"
+# )
+
 model = ChatOpenAI(
     temperature=0,
-    model="glm-4.6",
-    openai_api_key="69feab44626640cfb0d841966bc344a1.szw2ZTaSJ1KwvjS8",
-    openai_api_base="https://api.z.ai/api/paas/v4/"
+    model="glm-4.6:cloud",
+    openai_api_key="6ddb812c07914107ba7c0e504fdcf9f1.gkld5OFtD8NRbDZvMiYtHG6P",
+    openai_api_base="http://localhost:11434/v1/"
 )
 
 def create_finance_deep_agent(
