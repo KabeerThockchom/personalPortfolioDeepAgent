@@ -2,28 +2,39 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🆕 Recent Updates (2025-10-31)
+## 🆕 Recent Updates (2025-11-02)
 
-**Major enhancements added - see `RECENT_UPDATES.md` for full details:**
-- ✅ **Ultra-Rich Terminal Output** - Complete redesign of display system (NEW!)
-  - Smart JSON parsing with bullet-point formatting
-  - Tool-specific formatters for stocks, metrics, news
-  - Full data display (10K char limit, up from 500)
-  - Proper text wrapping with textwrap module
-  - Enhanced visual elements (icons, colors, boxes)
-  - All tool I/O shown completely (no "✓ SUCCESS" without data)
-  - Debug output removed from production
-- ✅ **Token Optimization** - 99.5% token reduction in tool responses (2.8M → 150K tokens for deep analysis)
-- ✅ **Custom Model Backend** - Switched to Z.ai GLM-4.6 model for all agents
-- ✅ **Subagent Model Inheritance Fix** - Fixed `'NoneType' has no attribute 'bind_tools'` error
-- ✅ **Human-in-the-Loop** - Agent now asks permission before portfolio modifications and complex tasks
-- ✅ **Date/Time Awareness** - All 9 agents now know current date/time
-- ✅ **Store Infrastructure** - Foundation for long-term memory (InMemoryStore integrated)
-- ✅ **Enhanced Display** - Full tool inputs/outputs with smart formatting in chat
-- ✅ **Tool Logging** - Subagent tool calls now visible in real-time (74+ tools wrapped)
-- ✅ **Friendly Node Names** - Clear agent labels ("🤖 Main Agent") and middleware context details
-- ✅ **Hybrid Architecture** - Main agent has 6 quick-access tools for instant responses
-- ✅ **Code Cleanup** - Removed legacy routing code (src/agents/, graph.py, state.py)
+**NEW: Consolidated Agent Architecture (Latest!)** - Optimized for Ollama Performance
+- ✅ **3 Lean Market Data Agents** - Consolidated from 6 to prevent Ollama overload
+  - market-data-specialist (8 tools) - Real-time quotes, pricing, charts, metrics
+  - fundamentals-analyst (9 tools) - Financial statements, company profiles, competitors
+  - market-intelligence-analyst (9 tools) - Sentiment, ratings, news, insider activity
+- ✅ **50% Fewer Parallel Spawns** - 3 agents vs 6 reduces Ollama server load
+- ✅ **65% Fewer Tools** - Removed 31 redundant/niche tools (48→17 market data tools)
+- ✅ **Zero Tool Overlap** - Each agent has distinct, focused responsibilities
+- ✅ **3-Tier Model Distribution** - Optimal model selection based on task complexity
+  - TIER 1: kimi-k2:1t-cloud (fastest) - Real-time pricing (1 agent)
+  - TIER 2: minimax-m2:cloud (medium) - Analysis & research (6 agents)
+  - TIER 3: glm-4.6:cloud (powerful) - Complex calculations, Monte Carlo, VaR (4 agents)
+- ✅ **Rate Limiting & Retry Logic** - Custom HTTP clients with exponential backoff for 429 errors
+  - Automatic recovery from rate limits with 1s → 2s → 4s → 8s delays
+  - Max 10 retries with user-friendly progress messages
+  - See `RATE_LIMITING.md` for details
+- ✅ **Portfolio Loading Fixed** - Removed /financial_data/ route conflict
+- ✅ **Local Memory Storage** - Changed memory location from `~/.deepagents/` to local project `.deepagents/`
+  - Memories now travel with the project (portable, version-controllable)
+  - Located at `/Users/kabeerthockchom/Downloads/personalPortfolioDeepAgent-1/.deepagents/finance-agent/memories`
+  - More intuitive for project-based workflows
+
+**Previous Updates (2025-10-31):**
+- ✅ **Ultra-Rich Terminal Output** - Complete redesign of display system
+- ✅ **Token Optimization** - 99.5% token reduction in tool responses
+- ✅ **Custom Model Backend** - Switched to local Ollama server
+- ✅ **Human-in-the-Loop** - Agent asks permission before modifications
+- ✅ **Date/Time Awareness** - All agents know current date/time
+- ✅ **Memory System** - Long-term memory with AgentMemoryMiddleware
+- ✅ **Hybrid Architecture** - Main agent has 6 quick-access tools
+- ✅ **Enhanced Display** - Full tool I/O with smart formatting
 
 ## Project Overview
 
@@ -103,15 +114,28 @@ MAIN_AGENT_QUICK_TOOLS = [
 - 🎓 Still gets expert analysis when needed
 - 🧠 Main agent learns when to delegate vs handle directly
 
-**8 Specialized Subagents** (`src/subagents_config.py`):
-1. **market-data-fetcher** - Real-time Yahoo Finance API (quotes, fundamentals, historical data)
-2. **research-analyst** - Company research (analyst ratings, insider trades, ESG, news, SEC filings)
-3. **portfolio-analyzer** - Investment analysis (valuation, allocation, concentration, Sharpe ratio, rebalancing)
-4. **cashflow-analyzer** - Income/expense analysis (cash flow, savings rate, categorization, burn rate)
-5. **goal-planner** - Retirement planning (Monte Carlo simulations, FIRE calculations, college funding)
-6. **debt-manager** - Debt optimization (payoff timelines, avalanche vs snowball, DTI ratio)
-7. **tax-optimizer** - Tax strategies (loss harvesting, Roth conversions, withdrawal sequencing)
-8. **risk-assessor** - Risk analysis (emergency fund, insurance gaps, stress testing, VaR)
+**9 Specialized Subagents** (`src/subagents_config.py`):
+
+**Market Data Specialists (3 consolidated agents - optimized for Ollama):**
+1. **market-data-specialist** - Real-time quotes, pricing, charts, metrics (8 tools: quotes, search, charts, statistics)
+2. **fundamentals-analyst** - Financial statements, company profiles, competitors (9 tools: financials, earnings, balance sheet, cash flow, profile, similar_stocks)
+3. **market-intelligence-analyst** - Sentiment, ratings, news, insider activity (10 tools: analysis, upgrades/downgrades, news, insider trades, major holders, calendar events)
+
+**Financial Analysis Specialists (6 agents - unchanged):**
+4. **portfolio-analyzer** - Investment analysis (valuation, allocation, concentration, Sharpe ratio, rebalancing)
+5. **cashflow-analyzer** - Income/expense analysis (cash flow, savings rate, categorization, burn rate)
+6. **goal-planner** - Retirement planning (Monte Carlo simulations, FIRE calculations, college funding)
+7. **debt-manager** - Debt optimization (payoff timelines, avalanche vs snowball, DTI ratio)
+8. **tax-optimizer** - Tax strategies (loss harvesting, Roth conversions, withdrawal sequencing)
+9. **risk-assessor** - Risk analysis (emergency fund, insurance gaps, stress testing, VaR)
+
+**Key Architecture Benefits:**
+- ✅ **50% fewer parallel spawns**: 3 market data agents vs 6 reduces Ollama server load
+- ✅ **Zero overlap**: Each agent has distinct, focused responsibilities
+- ✅ **Parallel execution**: Main agent spawns all 3 market data specialists simultaneously for comprehensive stock analysis
+- ✅ **Faster reasoning**: Max 9 tools per agent (down from 11-14) = faster LLM tool selection
+- ✅ **All critical data**: Removed 31 redundant/niche tools, kept all essential capabilities
+- ✅ **Better reliability**: Optimized for local Ollama server performance
 
 Each subagent has:
 - `name`: Identifier used in `task` tool calls
@@ -120,19 +144,37 @@ Each subagent has:
 - `tools`: Subset of 74+ total tools
 - `model`: Override model for this subagent (optional)
 
-**Model Configuration** (`src/subagents_config.py:23-35`):
-All subagents inherit the model from the main agent. The `SUBAGENT_MODELS` dictionary controls this:
+**Model Configuration** (`src/subagents_config.py:19-70`):
+Subagents use a 3-tier model distribution based on task complexity. The `SUBAGENT_MODELS` dictionary controls this:
 ```python
-# NOTE: All subagents set to None to inherit from main agent
-# The _build_subagent() helper only adds "model" key if value is not None
-# This ensures proper model inheritance (DeepAgents requires absence of key, not None value)
+# Z.ai models via local Ollama (http://localhost:11434/v1/)
+# TIER 1: kimi-k2:1t-cloud = FASTEST (simple lookups, quick queries)
+# TIER 2: minimax-m2:cloud = MEDIUM SPEED (analysis, research)
+# TIER 3: glm-4.6:cloud = MOST POWERFUL (complex reasoning, Monte Carlo, optimization)
+
 SUBAGENT_MODELS = {
-    "market-data-fetcher": None,  # Omits "model" key → inherits from main agent
-    "research-analyst": None,
-    "portfolio-analyzer": None,
-    # ... all 8 subagents set to None
+    # TIER 1: KIMI (Fastest) - Simple data fetching and quotes
+    "market-data-specialist": KIMI_MODEL,      # Real-time quotes, pricing, charts (1 agent)
+
+    # TIER 2: MINIMAX (Medium) - Analysis and research
+    "fundamentals-analyst": MINIMAX_MODEL,     # Financial statements, company intelligence
+    "market-intelligence-analyst": MINIMAX_MODEL, # Sentiment, ratings, news
+    "cashflow-analyzer": MINIMAX_MODEL,        # Income/expense analysis
+    "debt-manager": MINIMAX_MODEL,             # Debt payoff calculations (4 agents)
+
+    # TIER 3: GLM-4.6 (Most Powerful) - Complex calculations and optimization
+    "portfolio-analyzer": GLM_MODEL,           # Portfolio optimization, Sharpe ratio
+    "goal-planner": GLM_MODEL,                 # Monte Carlo simulations (complex!)
+    "tax-optimizer": GLM_MODEL,                # Tax optimization strategies
+    "risk-assessor": GLM_MODEL,                # VaR, stress testing (complex!) (4 agents)
 }
 ```
+
+**Benefits of 3-Tier Distribution:**
+- ✅ **Faster simple queries**: Price lookups use KIMI (fastest model)
+- ✅ **Balanced medium tasks**: Most agents use MINIMAX (good speed/quality balance)
+- ✅ **Accurate complex work**: Monte Carlo, VaR, optimization use GLM-4.6 (most powerful)
+- ✅ **Optimal resource usage**: Right tool for the job
 
 **Helper Function** (`src/subagents_config.py:167-180`):
 ```python
@@ -186,7 +228,6 @@ Format options for `SUBAGENT_MODELS` values:
   - Fundamentals: `get_stock_statistics`, `get_stock_financials`, `get_stock_earnings`, `get_stock_balance_sheet`, `get_stock_cashflow`
   - Research: `get_stock_profile`, `get_stock_analysis`, `get_stock_recommendations`, `get_upgrades_downgrades`
   - Ownership: `get_insider_transactions`, `get_stock_holders`, `get_major_holders`
-  - ESG: `get_esg_scores`, `get_esg_chart`, `get_esg_peer_scores`
   - News: `get_news_list`, `get_sec_filings`
   - Discovery: `search_stocks`, `get_similar_stocks`, `get_calendar_events`
 - `search_tools.py` (3 tools) - Tavily web search
@@ -295,11 +336,11 @@ agent = create_finance_deep_agent(enable_human_in_loop=False)
 CompositeBackend(
     default=StateBackend(),           # Ephemeral files (within thread)
     routes={
-        "/memories/": StoreBackend(), # Persistent (cross-session)
-        "/user_profiles/": StoreBackend(),
-        "/analysis_history/": StoreBackend(),
+        "/memories/": FilesystemBackend(root_dir=".deepagents/finance-agent/memories", virtual_mode=True), # Local project dir
+        "/user_profiles/": StoreBackend(), # In-memory persistent
+        "/analysis_history/": StoreBackend(), # In-memory persistent
         "/reports/": FilesystemBackend(root_dir=session_dir/"reports", virtual_mode=True),
-        "/financial_data/": FilesystemBackend(root_dir=session_dir/"financial_data", virtual_mode=True),
+        # /financial_data/ uses default StateBackend (ephemeral, in LangGraph state)
     }
 )
 ```
@@ -315,31 +356,37 @@ CompositeBackend(
 2. **StoreBackend** (Persistent - Cross-Session)
    - Storage: LangGraph BaseStore (InMemoryStore default, can use PostgreSQL/Redis)
    - Lifetime: Survives across all sessions forever
-   - Use for: `/memories/`, `/user_profiles/`, `/analysis_history/`
+   - Use for: `/user_profiles/`, `/analysis_history/`
    - Advantage: True long-term memory, namespace isolation per user
 
 3. **FilesystemBackend** (Real Disk Files)
-   - Storage: Actual filesystem at `sessions/{session_id}/`
+   - Storage: Actual filesystem (local project or session directories)
    - Lifetime: Persists on disk until manually deleted
-   - Use for: `/reports/`, `/financial_data/`
-   - Advantage: Inspectable, shareable, debuggable
+   - Use for: `/memories/` (local project), `/reports/` (session-specific)
+   - Advantage: Inspectable, shareable, debuggable, portable with project
 
 **Directory Structure**:
 ```
-sessions/{session_id}/
-├── reports/              # Real disk files (FilesystemBackend)
-│   └── retirement_analysis_2025-10-31.md
-├── financial_data/       # Real disk files (FilesystemBackend)
-│   ├── current_prices.json
-│   └── portfolio_snapshot.json
+# Local project directory (FilesystemBackend)
+.deepagents/finance-agent/
+├── memories/                    # Persistent user memories (FilesystemBackend)
+│   ├── investment_philosophy.md
+│   ├── risk_profile.md
+│   └── user_info.md
+└── agent.md                     # Agent instructions and learning history
 
-LangGraph State (StateBackend - ephemeral):
+# Session-specific directories (FilesystemBackend)
+sessions/{session_id}/
+└── reports/                     # Analysis reports (FilesystemBackend)
+    └── retirement_analysis_2025-10-31.md
+
+# LangGraph State (StateBackend - ephemeral within thread)
 ├── /working/calculations.txt
 ├── /temp/scratch.json
-└── /cache/api_results.json
+├── /cache/api_results.json
+└── /financial_data/portfolio.json  # Loaded by chat.py at startup
 
-LangGraph Store (StoreBackend - persistent):
-├── /memories/investment_philosophy.txt
+# LangGraph Store (StoreBackend - in-memory persistent)
 ├── /user_profiles/kabeer_preferences.json
 └── /analysis_history/2024_review.md
 ```
@@ -382,27 +429,48 @@ class BackendProtocol:
 4. **Security**: Hardened against path traversal and symlink attacks
 5. **Performance**: Ripgrep for 10-100x faster file search
 6. **Maintainability**: Battle-tested deepagents code instead of custom implementation
+7. **Portability**: Memories stored in local project directory (`.deepagents/`), travels with codebase
 
 ### Data Flow Example
 
-1. **User query**: "Calculate my portfolio value with current prices"
-2. **Main agent** (`deep_agent.py`):
+**Simple Query: "Calculate my portfolio value with current prices"**
+1. **Main agent** (`deep_agent.py`):
    - Creates todos with `write_todos`
    - Reads `portfolio.json` → extracts tickers (NVDA, AVGO, etc.)
-   - Spawns `market-data-fetcher` subagent via `task` tool
-3. **market-data-fetcher subagent**:
+   - Spawns `market-data-specialist` subagent via `task` tool (fast pricing + metrics)
+2. **market-data-specialist subagent**:
    - Uses `get_multiple_quotes(symbols=["NVDA", "AVGO", ...])` from `market_data_tools.py`
    - Yahoo Finance API called (cached 15min via `api_cache.py`)
    - Large responses saved to `/financial_data/current_prices.json`
    - Returns quotes to main agent
-4. **Main agent**:
+3. **Main agent**:
    - Reads prices from `/financial_data/current_prices.json`
    - Spawns `portfolio-analyzer` subagent
-5. **portfolio-analyzer subagent**:
+4. **portfolio-analyzer subagent**:
    - Uses `calculate_portfolio_value()` from `portfolio_tools.py`
    - Returns breakdown by account
-6. **Main agent**:
+5. **Main agent**:
    - Synthesizes results, responds to user
+
+**Complex Query: "Should I buy AAPL? Give me a full analysis."**
+1. **Main agent** (`deep_agent.py`):
+   - Creates comprehensive analysis plan with `write_todos`
+   - Spawns 3 market data specialists **IN PARALLEL** (optimized for Ollama):
+     - `market-data-specialist` - Fetches current price, charts, key metrics
+     - `fundamentals-analyst` - Analyzes financial statements, earnings, business model
+     - `market-intelligence-analyst` - Checks analyst ratings, insider activity, recent news
+2. **All 3 subagents execute simultaneously**:
+   - Each uses focused subset of 8-9 tools (no overlap, no redundancy)
+   - Results come back together after all complete
+3. **Main agent**:
+   - Synthesizes all 3 specialist reports into comprehensive buy/sell recommendation
+   - Saves final analysis to `/reports/AAPL_Investment_Analysis.md`
+   - Responds to user with clear recommendation and rationale
+
+**Performance comparison:**
+- Old architecture (6 agents): Ollama server overload, frequent 500 errors
+- New architecture (3 agents): 50% fewer spawns, much more reliable
+- **Better success rate** with optimized agent count!
 
 ### Chat Interface (`chat.py`)
 

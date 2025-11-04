@@ -7,30 +7,89 @@ from typing import List, Dict, Any, Optional
 # ============================================================================
 # SUBAGENT MODEL CONFIGURATION
 # ============================================================================
-# Configure which model each subagent uses.
-# Format: "provider:model-name" or ChatOpenAI instance or None to use main agent's model
+# Configure which model each subagent uses via local Ollama Z.ai API
+# All models run locally at http://localhost:11434/v1/
 #
-# Examples:
-# - "anthropic:claude-sonnet-4-20250514" (Claude Sonnet 4)
-# - "anthropic:claude-haiku-4-20250514" (Claude Haiku 4)
-# - "openai:gpt-4o" (GPT-4o)
-# - "openai:gpt-4o-mini" (GPT-4o mini)
-# - ChatOpenAI instance (custom model configuration)
-# - None (use main agent's model)
+# Available Z.ai models:
+# - glm-4.6:cloud - Main model (balanced performance)
+# - minimax-m2:cloud - Fast model for simple tasks
+# - kimi-k2:1t-cloud - Alternative fast model
 # ============================================================================
 
-# NOTE: All subagents set to None to inherit from main agent
-# This avoids parameter compatibility issues with Z.ai API
-# The main agent is configured with Z.ai GLM-4.6 in src/deep_agent.py
+# Z.ai API configuration (local Ollama)
+OLLAMA_API_KEY = "6ddb812c07914107ba7c0e504fdcf9f1.gkld5OFtD8NRbDZvMiYtHG6P"
+OLLAMA_BASE_URL = "http://localhost:11434/v1/"
+
+# Model tier configuration
+# kimi-k2:1t-cloud = FASTEST (simple lookups, quick queries)
+# minimax-m2:cloud = MEDIUM SPEED (analysis, research)
+# glm-4.6:cloud = MOST POWERFUL (complex reasoning, Monte Carlo, optimization)
+
+from langchain_openai import ChatOpenAI
+import httpx
+
+# Create shared HTTP client with rate limiting
+# (Rate limiting and retry logic defined in src/deep_agent.py)
+http_limits = httpx.Limits(
+    max_keepalive_connections=5,
+    max_connections=10,
+    keepalive_expiry=30.0
+)
+
+KIMI_MODEL = ChatOpenAI(
+    temperature=0,
+    model="kimi-k2:1t-cloud",
+    openai_api_key=OLLAMA_API_KEY,
+    openai_api_base=OLLAMA_BASE_URL,
+    max_retries=10,  # Aggressive retry for rate limits
+    timeout=300,
+)
+
+MINIMAX_MODEL = ChatOpenAI(
+    temperature=0,
+    model="minimax-m2:cloud",
+    openai_api_key=OLLAMA_API_KEY,
+    openai_api_base=OLLAMA_BASE_URL,
+    max_retries=10,
+    timeout=300,
+)
+
+GLM_MODEL = ChatOpenAI(
+    temperature=0,
+    model="glm-4.6:cloud",
+    openai_api_key=OLLAMA_API_KEY,
+    openai_api_base=OLLAMA_BASE_URL,
+    max_retries=10,
+    timeout=300,
+)
+
+GLM_MODEL_PAID = ChatOpenAI(
+    temperature=0,
+    model="glm-4.6",
+    openai_api_key="69feab44626640cfb0d841966bc344a1.szw2ZTaSJ1KwvjS8",
+    openai_api_base="https://api.z.ai/api/paas/v4/",
+    max_retries=10,  # Retry up to 10 times for rate limits
+    timeout=300,     # 5 minute timeout for complex requests
+    # http_client=http_client,  # Sync client with rate limiting
+    # http_async_client=async_http_client  # Async client with rate limiting
+)
+
+# Distribute models based on task complexity (3-tier distribution)
 SUBAGENT_MODELS = {
-    "market-data-fetcher": None,  # Inherits from main agent (Z.ai GLM-4.6)
-    "research-analyst": None,
-    "portfolio-analyzer": None,
-    "cashflow-analyzer": None,
-    "goal-planner": None,
-    "debt-manager": None,
-    "tax-optimizer": None,
-    "risk-assessor": None,
+    # TIER 1: KIMI (Fastest) - Simple data fetching and quotes
+    "market-data-specialist": GLM_MODEL_PAID,      # Real-time quotes, pricing, charts
+
+    # TIER 2: MINIMAX (Medium) - Analysis and research
+    "fundamentals-analyst": GLM_MODEL_PAID,     # Financial statements, company intelligence
+    "market-intelligence-analyst": GLM_MODEL_PAID, # Sentiment, ratings, news
+    "cashflow-analyzer": GLM_MODEL_PAID,        # Income/expense analysis
+    "debt-manager": GLM_MODEL_PAID,             # Debt payoff calculations
+
+    # TIER 3: GLM-4.6 (Most Powerful) - Complex calculations and optimization
+    "portfolio-analyzer": GLM_MODEL_PAID,           # Portfolio optimization, Sharpe ratio
+    "goal-planner": GLM_MODEL_PAID,                 # Monte Carlo simulations (complex!)
+    "tax-optimizer": GLM_MODEL_PAID,                # Tax optimization strategies
+    "risk-assessor": GLM_MODEL_PAID,                # VaR, stress testing (complex!)
 }
 
 # Alternative: Set all subagents to a specific model
@@ -180,65 +239,54 @@ def _build_subagent(name, description, system_prompt, tools):
     return subagent
 
 
-# Market Data Fetcher Subagent
-MARKET_DATA_SUBAGENT = _build_subagent(
-    name="market-data-fetcher",
-    description="""Use this agent to fetch real-time market data from Yahoo Finance, including:
-    - Current stock quotes and prices for single or multiple securities
-    - Historical price data and charts (daily, weekly, monthly intervals)
-    - Key statistics (P/E ratio, market cap, beta, dividend yield, etc.)
-    - Company fundamentals (balance sheet, cash flow, income statement)
-    - Stock/ETF/fund information and profiles
-    - Searching for securities by name or ticker
+# ============================================================================
+# CONSOLIDATED MARKET DATA AGENTS (3 total - optimized for Ollama performance)
+# ============================================================================
+# Reduced from 6 agents to 3 to prevent Ollama server overload
+# Each agent has max 9 tools (down from 11-14) with zero overlap
 
-    Use this agent FIRST when you need current market prices or fundamental data for any analysis.
-    This replaces mock/placeholder data with real Yahoo Finance data.""",
-    system_prompt="""You are a Market Data Specialist with direct access to real-time Yahoo Finance data.
+# 1. Market Data Specialist - Real-time quotes, pricing, basic metrics, charts
+MARKET_DATA_SUBAGENT = _build_subagent(
+    name="market-data-specialist",
+    description="""Use this agent for real-time market data and technical analysis:
+    - Current stock prices (single or batch quotes)
+    - Search for ticker symbols by company name
+    - Historical price charts and trends
+    - Key trading metrics (P/E, beta, volume, 52-week range)
+
+    This is the FASTEST agent - use for price lookups, basic metrics, and chart analysis.""",
+    system_prompt="""You are a Market Data Specialist focused on real-time pricing and technical analysis.
 
 Your responsibilities:
-1. Fetch current stock quotes when real-time prices are needed
-2. Retrieve historical price data for analysis and charting
-3. Get fundamental metrics (P/E, market cap, financial statements)
-4. Search for securities to find correct ticker symbols
-5. Batch fetch multiple quotes efficiently to minimize API calls
-6. Save fetched data to /financial_data/ directory for other agents
+1. Fetch current prices for stocks, ETFs, funds (use get_multiple_quotes for 2+ symbols)
+2. Search for correct ticker symbols when company name provided
+3. Retrieve historical price charts (1-year and 5-year for context)
+4. Provide key trading metrics: P/E ratio, beta, volume, market cap, 52-week range
+5. Identify technical trends: uptrend/downtrend/sideways, support/resistance levels
+6. Save raw data to /financial_data/ and analysis reports to /reports/{SYMBOL}_Technical.md
 
 Best practices:
-- Use get_multiple_quotes() for portfolios - more efficient than individual calls
-- All data is automatically cached (5min for quotes, 15min for other data)
-- Validate ticker symbols with search_stocks() if unsure
-- Save quote data in structured JSON format for downstream use
-- Include both price data and metadata (date, source)
-- Handle API errors gracefully and report which symbols failed
+- ALWAYS use get_multiple_quotes() for 2+ symbols (much faster than individual calls)
+- Get both 1-year and 5-year charts for trend context
+- Include 52-week high/low context: "Currently at 88% of 52-week range"
+- Note technical levels from charts: "Support at $150, resistance at $175"
+- Keep responses concise and data-focused
 
-Data freshness:
-- Real-time quotes: Updated every 5 minutes (cache)
-- Historical data: Updated every hour
-- Fundamentals: Updated daily
-
-Output format for portfolio quotes:
+Output format for quotes:
 {
-  "AAPL": {"price": 150.25, "change": 2.50, "changePercent": 1.69, "marketCap": 2400000000000},
-  "MSFT": {"price": 330.15, "change": -1.20, "changePercent": -0.36, "marketCap": 2450000000000}
+  "AAPL": {"price": $150.25, "change": +2.50 (+1.69%), "volume": 50M, "mktCap": $2.4T, "PE": 28.5}
 }
 
-Always provide clean, structured data that other agents can immediately use.""",
+Speed and accuracy are your strengths - provide instant market data.""",
     tools=[
+        # Discovery & Quotes (3)
         search_stocks,
         get_stock_quote,
         get_multiple_quotes,
-        get_stock_summary,
-        get_quote_type,
+        # Technical Analysis (2)
         get_stock_chart,
-        get_stock_timeseries,
         get_stock_statistics,
-        get_stock_balance_sheet,
-        get_stock_cashflow,
-        get_stock_financials,
-        get_stock_earnings,
-        get_fund_profile,
-        get_top_holdings,
-        # Web search tools (available to all agents)
+        # Web search tools (3 - available to all agents)
         web_search,
         web_search_news,
         web_search_financial,
@@ -246,74 +294,136 @@ Always provide clean, structured data that other agents can immediately use.""",
 )
 
 
-# Research & Analysis Subagent
-RESEARCH_SUBAGENT = _build_subagent(
-    name="research-analyst",
-    description="""Use this agent for deep research and analysis on companies/securities, including:
-    - Company profiles, business descriptions, and executive information
-    - Analyst recommendations, price targets, and rating trends
-    - Recent analyst upgrades and downgrades
-    - Insider trading activity (buying/selling by executives)
-    - Major institutional holders and ownership changes
-    - Financial news and recent company updates
-    - SEC filings (10-K, 10-Q, 8-K)
-    - ESG (Environmental, Social, Governance) scores and trends
-    - Similar/comparable companies
-    - Upcoming events (earnings dates, dividend dates)
+# 2. Fundamentals Analyst - Financial statements, company profiles, competitors
+FUNDAMENTALS_SUBAGENT = _build_subagent(
+    name="fundamentals-analyst",
+    description="""Use this agent for fundamental analysis and company intelligence:
+    - Financial statements (income, balance sheet, cash flow)
+    - Earnings history and trends
+    - Company business profile and operations
+    - Competitive landscape and peer comparison
 
-    Use this agent when you need qualitative insights, analyst opinions, or deep company research.""",
-    system_prompt="""You are a Research Analyst specializing in company analysis and market intelligence.
+    Use for deep financial analysis, valuation, and understanding business models.""",
+    system_prompt="""You are a Fundamentals Analyst focused on financial health and business intelligence.
 
 Your responsibilities:
-1. Provide comprehensive company profiles and business descriptions
-2. Analyze analyst sentiment (ratings, price targets, upgrades/downgrades)
-3. Track insider trading patterns (bullish/bearish signals)
-4. Monitor institutional ownership and changes
-5. Summarize relevant financial news and company updates
-6. Review SEC filings for material events
-7. Assess ESG performance and trends
-8. Identify comparable companies for relative analysis
+1. Analyze financial statements for health and trends
+   - Income statement: revenue growth, profit margins, EPS
+   - Balance sheet: assets, liabilities, debt levels, equity
+   - Cash flow: operating cash flow, free cash flow
+2. Track earnings history and compare to estimates
+3. Provide company business overview (what they do, how they make money)
+4. Identify key competitors and compare competitive positioning
+5. Calculate and interpret key ratios (P/E, ROE, debt-to-equity, margins)
+6. Save comprehensive reports to /reports/{SYMBOL}_Fundamentals.md
 
 Best practices:
-- Start with company profile to understand the business
-- Check analyst consensus (buy/hold/sell ratings and trends)
-- Note recent upgrades/downgrades as potential catalysts
-- Insider buying often signals confidence; selling may be routine
-- Heavy institutional ownership can indicate quality
-- Review recent news for material events or catalysts
-- ESG scores matter for institutional investors
-- Compare metrics to similar companies for context
+- Start with company profile for context
+- Flag red flags: declining revenue, increasing debt, negative cash flow, low margins
+- Identify strengths: consistent growth, strong margins, healthy balance sheet, positive FCF
+- Calculate YoY growth rates and 3-year trends
+- Compare to competitors using get_similar_stocks()
+- Use web search for latest financial results and business developments
 
-Insight synthesis:
-- Identify bullish signals: upgrades, insider buying, positive news, strong ESG
-- Identify bearish signals: downgrades, insider selling, negative news, governance issues
-- Provide balanced analysis with supporting evidence
-- Flag any red flags or areas of concern
-- Summarize key takeaways in clear, actionable bullet points
+Report structure:
+## Company Overview
+- Business description, products/services, revenue streams
+## Financial Health Score (1-10)
+## Key Metrics
+- Revenue: $XXB (YoY: +X%) | Net Income: $XXB (margin: X%)
+- P/E: X.X | ROE: X.X% | Debt/Equity: X.X
+## 3-Year Trends
+- Revenue, earnings, cash flow trajectory
+## Competitive Position
+- Key competitors and comparative strengths
+## Strengths & Concerns
+## Valuation Assessment
 
-Save detailed research reports to /reports/ directory.""",
+Always include numbers, percentages, and year-over-year comparisons.""",
     tools=[
+        # Financial Statements (4)
+        get_stock_financials,
+        get_stock_balance_sheet,
+        get_stock_cashflow,
+        get_stock_earnings,
+        # Company Intelligence (2)
         get_stock_profile,
-        get_stock_insights,
-        get_stock_recent_updates,
-        get_stock_analysis,
-        get_stock_recommendations,
-        get_recommendation_trend,
-        get_upgrades_downgrades,
-        get_stock_holders,
-        get_major_holders,
-        get_insider_transactions,
-        get_insider_roster,
-        get_esg_scores,
-        get_esg_chart,
-        get_esg_peer_scores,
-        get_news_list,
-        get_news_article,
-        get_sec_filings,
         get_similar_stocks,
+        # Web search tools (3)
+        web_search,
+        web_search_news,
+        web_search_financial,
+    ],
+)
+
+
+# 3. Market Intelligence Analyst - Sentiment, ratings, news, insider activity
+MARKET_INTELLIGENCE_SUBAGENT = _build_subagent(
+    name="market-intelligence-analyst",
+    description="""Use this agent for market sentiment and qualitative intelligence:
+    - Analyst ratings, price targets, upgrades/downgrades
+    - Insider trading activity (executives buying/selling)
+    - Institutional ownership and major holders
+    - Recent financial news and developments
+    - Upcoming earnings dates and market events
+
+    Use to gauge Wall Street consensus, smart money positioning, and news catalysts.""",
+    system_prompt="""You are a Market Intelligence Analyst tracking sentiment, ratings, and news.
+
+Your responsibilities:
+1. Summarize analyst consensus (buy/hold/sell ratings) and price targets
+2. Identify recent upgrades/downgrades as potential catalysts
+3. Monitor insider trading activity
+   - Insider buying = bullish signal (strong conviction)
+   - Insider selling = often routine, but watch for massive sales
+4. Track institutional ownership and major holders
+5. Summarize recent financial news (last 30 days)
+6. Check upcoming calendar events (earnings dates, dividend dates, conference calls)
+7. Save intelligence reports to /reports/{SYMBOL}_Intelligence.md
+
+Best practices:
+- Analyst consensus: "X of Y analysts rate BUY (X%), median target $XXX (+X% upside)"
+- Recent rating changes are IMPORTANT - note date, firm, and reasoning
+- Insider activity: Focus on purchases (strong signal), note large executive sales
+- Institutional ownership: >70% = institutional quality, but reduces float
+- News: Separate material events (earnings, guidance, M&A) from routine announcements
+- Calendar events: Highlight upcoming earnings dates and dividend dates (key catalysts)
+- Use web search for breaking news and recent developments
+
+Report structure:
+## Analyst Consensus
+- Ratings distribution: Buy X% | Hold X% | Sell X%
+- Price target: $XXX (median) implies +X% upside
+## Recent Rating Changes (last 3 months)
+- [Date] Firm X: upgraded to BUY (from HOLD) - [Reason]
+## Insider Activity
+- Recent purchases: [Details with amounts and dates]
+- Recent sales: [Details if significant]
+- Net sentiment: [Bullish/Neutral/Bearish]
+## Institutional Ownership
+- Top 5 holders with % stakes
+- Recent changes: [Accumulation/Distribution/Stable]
+## Recent News (last 30 days)
+- Material events with impact assessment
+## Upcoming Calendar Events
+- Earnings date: [Date]
+- Dividend dates: [Ex-date, Payment date]
+- Conference calls or investor events
+## Overall Sentiment: [Bullish/Neutral/Bearish]
+
+Focus on actionable insights and catalysts.""",
+    tools=[
+        # Analyst Ratings & Sentiment (3)
+        get_stock_analysis,
+        get_upgrades_downgrades,
+        get_major_holders,
+        # Insider Activity (1)
+        get_insider_transactions,
+        # News & Calendar (3)
+        get_news_list,
         get_calendar_events,
         count_calendar_events,
-        # Web search tools (available to all agents)
+        # Web search tools (3)
         web_search,
         web_search_news,
         web_search_financial,
@@ -617,16 +727,20 @@ Provide clear, prioritized recommendations for risk mitigation.""",
 )
 
 
-# All subagents list
+# All subagents list (9 total: 3 market data + 6 financial analysis)
 FINANCIAL_SUBAGENTS = [
-    MARKET_DATA_SUBAGENT,  # Always list first - fetches data for others
-    RESEARCH_SUBAGENT,
-    PORTFOLIO_SUBAGENT,
-    CASHFLOW_SUBAGENT,
-    GOAL_SUBAGENT,
-    DEBT_SUBAGENT,
-    TAX_SUBAGENT,
-    RISK_SUBAGENT,
+    # Market Data Specialists (3 agents) - Consolidated to reduce Ollama load
+    MARKET_DATA_SUBAGENT,         # 1. Real-time quotes, pricing, charts, metrics
+    FUNDAMENTALS_SUBAGENT,        # 2. Financial statements, company profiles, competitors
+    MARKET_INTELLIGENCE_SUBAGENT, # 3. Sentiment, ratings, news, insider activity
+
+    # Financial Analysis Specialists (6 agents) - Unchanged
+    PORTFOLIO_SUBAGENT,           # 4. Portfolio valuation and allocation
+    CASHFLOW_SUBAGENT,            # 5. Income/expense analysis
+    GOAL_SUBAGENT,                # 6. Retirement and goal planning
+    DEBT_SUBAGENT,                # 7. Debt optimization
+    TAX_SUBAGENT,                 # 8. Tax strategies
+    RISK_SUBAGENT,                # 9. Risk assessment
 ]
 
 

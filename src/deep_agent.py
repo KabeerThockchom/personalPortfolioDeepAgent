@@ -13,6 +13,7 @@ from .backends import (
     StoreBackend,
     FilesystemBackend,
 )
+from .middleware import AgentMemoryMiddleware
 from .subagents_config import FINANCIAL_SUBAGENTS, format_subagents_with_datetime
 
 # Import most common tools for main agent quick access
@@ -95,7 +96,7 @@ You have **direct access to 6 common tools** for fast responses to simple querie
 **When to delegate to subagents** (complex/specialized work):
 - 🎓 Complex analysis: Monte Carlo simulations, tax optimization, risk modeling
 - 🎓 Multi-step workflows: Portfolio rebalancing, debt avalanche strategy
-- 🎓 Specialized data: ESG scores, insider transactions, analyst ratings, fundamentals
+- 🎓 Specialized data: Earnings calendars, insider transactions, analyst ratings, fundamentals
 - 🎓 Domain expertise: Retirement projections, tax strategies, insurance gaps
 
 **Examples:**
@@ -182,16 +183,29 @@ When tasks are INDEPENDENT (no data dependencies), spawn subagents in PARALLEL b
 - ✅ Researching multiple companies simultaneously
 - ❌ NOT when Task B needs output from Task A (use sequential)
 
-**Available Subagents:**
+**Available Specialized Subagents (9 total):**
 
-**market-data-fetcher** - Real-time market data (NEW!)
-- Use when: Need current stock prices, historical data, fundamentals, or company info
-- Returns: Real-time quotes, historical prices, financial statements, key statistics
-- IMPORTANT: Use this FIRST before portfolio analysis to get real prices (replaces mock data)
+**MARKET DATA SPECIALISTS** (3 consolidated agents - optimized for performance):
 
-**research-analyst** - Company research and analysis (NEW!)
-- Use when: Need analyst opinions, insider trades, news, ESG scores, SEC filings
-- Returns: Company profiles, analyst ratings, ownership data, news summaries
+**market-data-specialist** - Real-time quotes, pricing, charts, metrics
+- Use when: Need current prices, historical charts, basic metrics (P/E, beta, volume)
+- Fastest agent - combines pricing + technical analysis
+- Returns: Quotes, price trends, 52-week ranges, trading metrics
+- Tools: 8 total (quotes, search, charts, statistics)
+
+**fundamentals-analyst** - Financial statements, company profiles, competitors
+- Use when: Need income statements, balance sheets, cash flow, company overview, competitors
+- Combines financial analysis + business intelligence
+- Returns: Financial health, earnings trends, business description, competitive position
+- Tools: 9 total (financials, earnings, profile, similar_stocks)
+
+**market-intelligence-analyst** - Sentiment, ratings, news, insider activity
+- Use when: Need analyst ratings, insider trades, institutional ownership, recent news, upcoming earnings/events
+- Combines sentiment + news research
+- Returns: Analyst consensus, upgrades/downgrades, insider activity, news summaries, calendar events
+- Tools: 10 total (analysis, ratings, news, holders, insider trades, calendar)
+
+**FINANCIAL ANALYSIS SPECIALISTS**:
 
 **portfolio-analyzer** - Investment analysis
 - Use when: Analyzing holdings, returns, allocation, concentration risk
@@ -220,7 +234,7 @@ When tasks are INDEPENDENT (no data dependencies), spawn subagents in PARALLEL b
 **Example: Sequential Delegation (Task B needs Task A's output)**:
 ```python
 # Step 1: First fetch prices (other tasks depend on this)
-task(subagent_type="market-data-fetcher", description="Fetch current prices for portfolio holdings")
+task(subagent_type="market-data-specialist", description="Fetch current prices for portfolio holdings")
 # Wait for result...
 # Step 2: Then analyze with those prices
 task(subagent_type="portfolio-analyzer", description="Calculate portfolio value using current prices")
@@ -242,6 +256,16 @@ task(
     description="Assess emergency fund adequacy and insurance gaps"
 )
 # All three subagents run SIMULTANEOUSLY, results come back together
+```
+
+**Example: Comprehensive Stock Analysis (3 market data specialists in PARALLEL)** ⚡:
+```python
+# User: "Should I buy AAPL? Give me a full analysis."
+# Spawn ALL 3 market data specialists in PARALLEL:
+task(subagent_type="market-data-specialist", description="Get AAPL current price, charts, and key metrics")
+task(subagent_type="fundamentals-analyst", description="Analyze AAPL financial statements, earnings, business model")
+task(subagent_type="market-intelligence-analyst", description="Check AAPL analyst ratings, insider activity, recent news")
+# All 3 execute simultaneously - faster than sequential, optimized for Ollama!
 ```
 
 ### 4. Writing Comprehensive Reports
@@ -307,7 +331,7 @@ Response: "Based on my analysis, you're currently 78% on track for your retireme
 ```
 You: write_todos(["Load portfolio", "Fetch real prices", "Calculate returns", "Write report"])
 You: read_file("/financial_data/kabeer_thockchom_portfolio.json")
-You: task(subagent_type="market-data-fetcher", description='''Fetch current prices for:
+You: task(subagent_type="market-data-specialist", description='''Fetch current prices for:
     VTSAX, VTIAX, VBTLX, VNQ, ROTH_2055, BTC-USD, ETH-USD
     Save to /financial_data/current_prices.json''')
 You: read_file("/financial_data/current_prices.json")
@@ -334,9 +358,9 @@ You: task(subagent_type="research-analyst", description='''Research Tesla (TSLA)
     1. Company profile and business overview
     2. Analyst ratings and recent upgrades/downgrades
     3. Insider trading activity
-    4. ESG scores
+    4. Upcoming earnings dates and events
     5. Recent news and SEC filings''')
-You: task(subagent_type="market-data-fetcher", description="Get TSLA fundamentals: P/E, market cap, financials")
+You: task(subagent_type="fundamentals-analyst", description="Get TSLA fundamentals: P/E, market cap, financials")
 
 [Both subagents execute in parallel, return results together]
 Response: "Tesla has mixed signals. Analysts are split (40% buy, 35% hold, 25% sell)..."
@@ -347,33 +371,154 @@ Response: "Tesla has mixed signals. Analysts are split (40% buy, 35% hold, 25% s
 You: write_todos(["Fetch data for 3 stocks in parallel", "Compare and synthesize"])
 
 # PARALLEL EXECUTION: All three spawn at once ⚡
-You: task(subagent_type="market-data-fetcher", description="Get NVDA complete analysis: price, fundamentals, analyst ratings")
-You: task(subagent_type="market-data-fetcher", description="Get AAPL complete analysis: price, fundamentals, analyst ratings")
-You: task(subagent_type="market-data-fetcher", description="Get MSFT complete analysis: price, fundamentals, analyst ratings")
+# Each company gets all 3 market data specialists
+You: task(subagent_type="market-data-specialist", description="Get NVDA price, charts, metrics")
+You: task(subagent_type="fundamentals-analyst", description="Get NVDA financials, earnings, business profile")
+You: task(subagent_type="market-intelligence-analyst", description="Get NVDA analyst ratings, insider activity, news")
 
-[All three execute simultaneously - much faster than sequential!]
+[All three execute simultaneously for comprehensive NVDA analysis!]
 Response: "Comparing the three tech giants: NVDA leads in growth (P/E: 65), AAPL in stability..."
 ```
 
 Remember: You're the orchestrator. Plan clearly, delegate appropriately, synthesize insights, and provide actionable recommendations."""
 
 from langchain_openai import ChatOpenAI
+from openai import OpenAI
+import httpx
+import asyncio
+import time
+
+# Custom HTTP client with better retry logic for rate limiting
+class RateLimitedHTTPClient(httpx.Client):
+    """Sync HTTP client with exponential backoff for 429 errors."""
+
+    def __init__(self, *args, max_retries=10, base_delay=1.0, max_delay=60.0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+        self.max_delay = max_delay
+
+    def send(self, request, *args, **kwargs):
+        """Send request with exponential backoff on 429 errors."""
+        last_error = None
+
+        for attempt in range(self.max_retries):
+            try:
+                response = super().send(request, *args, **kwargs)
+
+                # If we got a 429, wait and retry
+                if response.status_code == 429:
+                    if attempt < self.max_retries - 1:
+                        # Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 60s (capped)
+                        delay = min(self.base_delay * (2 ** attempt), self.max_delay)
+                        print(f"⚠️  Rate limit hit (attempt {attempt + 1}/{self.max_retries}). Waiting {delay:.1f}s before retry...")
+                        time.sleep(delay)
+                        continue
+                    else:
+                        return response  # Max retries reached, return 429
+
+                return response  # Success or non-429 error
+
+            except Exception as e:
+                last_error = e
+                if attempt < self.max_retries - 1:
+                    delay = min(self.base_delay * (2 ** attempt), self.max_delay)
+                    print(f"⚠️  Request failed: {e}. Retrying in {delay:.1f}s...")
+                    time.sleep(delay)
+                    continue
+                raise
+
+        if last_error:
+            raise last_error
+        return response
+
+
+# Custom Async HTTP client with better retry logic
+class RateLimitedAsyncHTTPClient(httpx.AsyncClient):
+    """Async HTTP client with exponential backoff for 429 errors."""
+
+    def __init__(self, *args, max_retries=10, base_delay=1.0, max_delay=60.0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+        self.max_delay = max_delay
+
+    async def send(self, request, *args, **kwargs):
+        """Send request with exponential backoff on 429 errors."""
+        last_error = None
+
+        for attempt in range(self.max_retries):
+            try:
+                response = await super().send(request, *args, **kwargs)
+
+                # If we got a 429, wait and retry
+                if response.status_code == 429:
+                    if attempt < self.max_retries - 1:
+                        # Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 60s (capped)
+                        delay = min(self.base_delay * (2 ** attempt), self.max_delay)
+                        print(f"⚠️  Rate limit hit (attempt {attempt + 1}/{self.max_retries}). Waiting {delay:.1f}s before retry...")
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        return response  # Max retries reached, return 429
+
+                return response  # Success or non-429 error
+
+            except Exception as e:
+                last_error = e
+                if attempt < self.max_retries - 1:
+                    delay = min(self.base_delay * (2 ** attempt), self.max_delay)
+                    print(f"⚠️  Request failed: {e}. Retrying in {delay:.1f}s...")
+                    await asyncio.sleep(delay)
+                    continue
+                raise
+
+        if last_error:
+            raise last_error
+        return response
+
+
+# Create HTTP clients with rate limiting
+http_limits = httpx.Limits(
+    max_keepalive_connections=5,  # Limit concurrent connections to prevent overwhelming Ollama
+    max_connections=10,
+    keepalive_expiry=30.0
+)
+
+http_client = RateLimitedHTTPClient(
+    timeout=300.0,  # 5 minute timeout
+    limits=http_limits
+)
+
+async_http_client = RateLimitedAsyncHTTPClient(
+    timeout=300.0,  # 5 minute timeout
+    limits=http_limits
+)
+
+# Configure model with aggressive retry logic for rate limiting
 # model = ChatOpenAI(
 #     temperature=0,
-#     model="glm-4.6",
-#     openai_api_key="69feab44626640cfb0d841966bc344a1.szw2ZTaSJ1KwvjS8",
-#     openai_api_base="https://api.z.ai/api/paas/v4/"
+#     model="glm-4.6:cloud",
+#     openai_api_key="6ddb812c07914107ba7c0e504fdcf9f1.gkld5OFtD8NRbDZvMiYtHG6P",
+#     openai_api_base="http://localhost:11434/v1/",
+#     max_retries=10,  # Retry up to 10 times for rate limits
+#     timeout=300,     # 5 minute timeout for complex requests
+#     http_client=http_client,  # Sync client with rate limiting
+#     http_async_client=async_http_client  # Async client with rate limiting
 # )
 
 model = ChatOpenAI(
     temperature=0,
-    model="glm-4.6:cloud",
-    openai_api_key="6ddb812c07914107ba7c0e504fdcf9f1.gkld5OFtD8NRbDZvMiYtHG6P",
-    openai_api_base="http://localhost:11434/v1/"
+    model="glm-4.6",
+    openai_api_key="69feab44626640cfb0d841966bc344a1.szw2ZTaSJ1KwvjS8",
+    openai_api_base="https://api.z.ai/api/paas/v4/",
+    max_retries=10,  # Retry up to 10 times for rate limits
+    timeout=300,     # 5 minute timeout for complex requests
+    # http_client=http_client,  # Sync client with rate limiting
+    # http_async_client=async_http_client  # Async client with rate limiting
 )
 
 def create_finance_deep_agent(
-    # model="openai:gpt-5-mini",
     model=model,
     store=None,
     additional_tools=None,
@@ -427,20 +572,43 @@ def create_finance_deep_agent(
     session_dir = Path("sessions") / session_id
     session_dir.mkdir(parents=True, exist_ok=True)
 
+    # Create agent directory for long-term memory (agent.md) in local project directory
+    agent_dir = Path(__file__).parent.parent / ".deepagents" / "finance-agent"
+    agent_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create memories directory for persistent user data
+    memories_dir = agent_dir / "memories"
+    memories_dir.mkdir(parents=True, exist_ok=True)
+
+    # Initialize agent.md if it doesn't exist
+    agent_md_path = agent_dir / "agent.md"
+    if not agent_md_path.exists():
+        # Copy default agent.md from project
+        default_agent_md = Path(".deepagents/finance-agent/agent.md")
+        if default_agent_md.exists():
+            import shutil
+            shutil.copy(default_agent_md, agent_md_path)
+
     # Lambda factories for backends (receive runtime at execution time)
     def create_backend(runtime):
         return CompositeBackend(
-            default=StateBackend(runtime),  # Default: ephemeral files in LangGraph state
+            default=StateBackend(runtime),  # Default: ephemeral files in LangGraph state (includes /financial_data/)
             routes={
-                "/memories/": StoreBackend(runtime),      # Persistent across sessions
-                "/user_profiles/": StoreBackend(runtime), # Persistent user data
-                "/analysis_history/": StoreBackend(runtime),  # Persistent analysis history
+                "/memories/": FilesystemBackend(root_dir=memories_dir, virtual_mode=True),  # Real disk files, persistent forever
+                "/user_profiles/": StoreBackend(runtime), # Persistent user data (in-memory for now)
+                "/analysis_history/": StoreBackend(runtime),  # Persistent analysis history (in-memory for now)
                 "/reports/": FilesystemBackend(root_dir=session_dir / "reports", virtual_mode=True),
-                "/financial_data/": FilesystemBackend(root_dir=session_dir / "financial_data", virtual_mode=True),
+                # NOTE: /financial_data/ is NOT routed - uses default StateBackend
+                # This allows chat.py to load portfolio into state at startup
             }
         )
 
+    # Create long-term backend for agent memory (agent.md)
+    def create_longterm_backend(runtime):
+        return FilesystemBackend(root_dir=agent_dir, virtual_mode=True)
+
     backend = create_backend  # Pass factory function, not instance
+    longterm_backend = create_longterm_backend  # For agent memory middleware
 
     # Create checkpointer for human-in-the-loop functionality
     # This is REQUIRED for interrupts to work
@@ -468,6 +636,12 @@ def create_finance_deep_agent(
     # Determine interrupt configuration
     interrupt_on = INTERRUPT_ON_CONFIG if enable_human_in_loop else {}
 
+    # Create agent memory middleware
+    agent_memory_middleware = AgentMemoryMiddleware(
+        backend=longterm_backend,
+        memory_path="/memories/"
+    )
+
     # Create deep agent with long-term memory and human-in-the-loop
     agent = create_deep_agent(
         model=llm,
@@ -478,6 +652,7 @@ def create_finance_deep_agent(
         store=store,  # Long-term memory enabled by providing a Store
         checkpointer=checkpointer,  # Required for human-in-the-loop
         interrupt_on=interrupt_on,  # Tools requiring approval before execution
+        middleware=[agent_memory_middleware],  # Agent memory system
     )
 
     return agent

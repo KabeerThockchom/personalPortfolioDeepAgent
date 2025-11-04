@@ -1,7 +1,5 @@
-"""Middleware package for agent enhancements."""
+"""Custom middleware for the Personal Finance Deep Agent."""
 
-from .filesystem import FilesystemMiddleware
+from src.middleware.agent_memory import AgentMemoryMiddleware
 
-__all__ = [
-    "FilesystemMiddleware",
-]
+__all__ = ["AgentMemoryMiddleware"]
